@@ -1,0 +1,292 @@
+<!doctype html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+	<head>
+		<link rel="preconnect" href="https://fonts.googleapis.com">
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+		<link href="https://fonts.googleapis.com/css2?family=PT+Sans+Narrow&display=swap" rel="stylesheet">
+		<meta charset='utf-8'>
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>nteractive Audio Narratives</title>
+		<link href='style.css' rel='stylesheet'>
+		<script src='https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js'></script>
+		<script src='jsFunctions.js'></script>
+		<script>
+			$(document).ready(function(){
+				$('a[href^="#"]').on('click',function (e) {
+					e.preventDefault();
+					var target = this.hash,
+					$target = $(target);
+					$('html, body').stop().animate({
+						'scrollTop': $target.offset().top - 60
+					}, 1000, 'swing', null);
+				});
+    			$('.hover').bind('touchstart touchend', function(e) {
+        			e.preventDefault();
+        			$(this).toggleClass('hover_effect');
+    			});
+			});
+		</script>
+	</head>
+<body>
+	<img id="zoom" src="images/pictureframe.png" alt="Picture frame" onClick="hide(this)">
+
+	<div id="header">
+	    <div id="title">   
+	      <h1>nteractive Audio Narratives</h1>
+	    </div>
+		<div id="nav">
+			<ul>
+				<li><a href="#ws1">Introduction</a>
+					<ul>
+						<li><a href="#intro">Introduction</a></li>
+						<li><a href="#goals">Learning outcome</a></li>
+						<li><a href="#bio">Biography</a></li>
+						<li><a href="#schedule">Schedule</a></li>
+						<li><a href="#resources">Resources</a></li>
+					</ul>
+				</li>
+				<li><a href="#ws2">Storytelling</a>
+					<ul>
+						<li><a href="#intro2">Introduction</a></li>
+						<li><a href="#genres">Genres</a></li>
+						<li><a href="#pointofview">Point-of-view</a></li>
+						<li><a href="#linearnon">Linear/non-linear</a></li>
+						<li><a href="#branching">Branching</a></li>
+						<li><a href="#resources2">Resources</a></li>
+					</ul>
+				</li>
+		    	<li><a href="#ws3">Sound & music</a>
+		    		<ul>
+						<li><a href="#intro3">Introduction</a></li>
+						<li><a href="#sound">Sounds</a></li>
+						<li><a href="#music">Music</a></li>
+						<li><a href="#resources3">Resources</a></li>
+					</ul>
+				</li>
+				<li><a href="#ws4">Position based</a>
+		    		<ul>
+						<li><a href="#intro4">Introduction</a></li>
+						<li><a href="#precision">Precision</a></li>
+						<li><a href="#free">Is free good?</a></li>
+						<li><a href="#fallback">Fallback</a></li>
+						<li><a href="#resources4">Resources</a></li>
+					</ul>
+				</li>
+				<li><a href="#ws5">Photos</a>
+		    		<ul>
+					</ul>
+				</li>
+				<li><a href="#ws6" id="menulast">Workshop outcome</a></li>
+	    	</ul>
+	  	</div>
+		<div id="navbutton">
+		    <ul>
+		      <li><img src="images/menu.png" alt="Menu icon" onClick="showMenu()">
+		        <ul id="menuOptions">
+		          <li><a href="#ws1" onClick="hideMenu()">Introduction</a></li>
+		          <li><a href="#ws2" onClick="hideMenu()">Storytelling</a></li>
+		          <li><a href="#ws3" onClick="hideMenu()">Sound & music</a></li>
+		          <li><a href="#ws4" onClick="hideMenu()">Position based</a></li>
+		          <li><a href="#ws5" onClick="hideMenu()">Photos</a></li>
+		          <li><a href="#ws6" onClick="hideMenu()">The outcome</a></li>
+		        </ul>
+		      </li>
+		    </ul>
+	  	</div>    
+	</div>
+
+	<div id="ws1" class="session">
+		<h1>Designing Post-Human Storyworlds: Interactive Audio Narratives</h1>
+		<div class="wrapper">
+			<div class="left columnwrap">
+				<h2 id="intro">Introduction</h2>
+				<p>Step into a near-future in this workshop, where you’ll explore storytelling beyond the linear by creating interactive, location-based audio narratives that adapt, branch, and respond to listeners’ movements.</p>
+				<p>You’ll prototype branching storylines and multi-perspective plots, learning how to map narrative structures that shift with each decision. At the same time, you’ll dive deep into sound design, combining field recordings and foley sound with film and narrative music to build immersive sonic worlds. You will also explore using AI for sound design, trying different tools for creative use, while reflecting on AI from different critical perspectives. Using mobile phones, web interfaces, GPS, microphones, and various audio editing software, you’ll craft stories that unfold through movement, turning physical space into part of the narrative system.</p>
+				<h2 id="goals">Goals and learning outcome</h2>
+				<p>In this workshop, you will learn to design interactive, non-linear narratives with branching storylines and meaningful choices. You’ll combine AI-based tools with traditional sound design techniques for voice creation, recording, and sonic world-building, and build simple GPS-triggered audio experiences.</p>
+				<p>By the end, you will have created a prototype of an interactive audio storywalk with branching storylines: a spatial, responsive piece shaped by listener movement and decisions, showcasing your skills in narrative architecture, immersive storytelling, and sound design.</p>
+				<h2 id="bio">Short biography</h2>
+				<p><a href="mailto:niklas.ronnberg@liu.se">Niklas Rönnberg</a> –  I am a Senior Associate Professor in Sonification and Sound Design at Linköping University in Sweden, with a background in Media and Communication Studies. I teach Sound Technology and Procedural Sound Design, Music and Film Production, Visual Storytelling, and Physical Interaction Design and Prototyping. My research interests are in sonification, sonic interaction design, and speculative/critical sound design. I love music and sound design, and enjoy tinkering with synthesizers, sound technology, computers, and music electronics.</p>
+			</div>
+			<div class="right columnwrap sectionimage">
+				<h2 id="schedule">Schedule</h2>
+				<p><span class="we">Blue</span> indicates that we present information to you, <span class="you">orange</span> that you do the work (at campus), and <span class="out">green</span> that you do the work away (?) from campus.</p>
+				<h3>Tuesday</h3>
+				<p><span class="we">09:00</span> - Introduction to the workshop<br>
+				<span class="we">09:30</span> - Storytelling<br>
+				<span class="you">10:00</span> - Storyline ideation<br>
+				<span class="we">11:00</span> - Synposis, characters, places, time<br>
+				<span class="you">11:30</span> - Revising the story, writing synopsis<br>
+				<span class="out">13:00</span> - Field work, finding locations and paths<br>
+				<span class="you">14:30</span> - Revising the synopsis, creating of branching story flowchart<br>
+				<span class="you">16:00</span> - Debriefing, show and tell of synopsis, and critical reflection on AI use</p>
+				<h3>Wednesday</h3>
+				<p><span class="we">09:00</span> - Music and sound as narrative elements<br>
+				<span class="you">10:00</span> - Story writing (or using AI?), and identification of the need of music<br>
+				<span class="we">11:00</span> - Sound design and foley, with some sound recording tips and tricks<br>
+				<span class="you">11:30</span> - Planning of sound design and recording<br>
+				<span class="you">13</span>:<span class="out">00</span> - Finalizing the story and sound recording<br>
+				<span class="you">15:00</span> - Recording voice (or using AI?) for the narrator<br>
+				<span class="you">16:00</span> - Debriefing, and critical reflection on AI use</p>
+				<h3>Thursday</h3>
+				<p><span class="we">09:00</span> - Tools for GPS connection<br>
+				<span class="you">09:30</span> - Continuation of narrator recordings, sound design, and mixing<br>
+				<span class="we">11:00</span> - Info about splitting the work into many files, and branching story flowchart<br>
+				<span class="you">11:30</span> - File structure organization<br>
+				<span class="you">13:00</span> - Finalization of the story and all sound work<br>
+				<span class="you">16:00</span> - Explorations of all stories together, and critical refections on AI use</p>
+				<h2 id="resources">Resources</h2>
+				<h3>Slides</h3>
+				<ul>
+					<li>Introduction - <a href="">intro.pdf</a></li>
+				</ul>
+			</div>
+		</div>
+	</div>
+
+	<div id="ws2" class="session">
+		<h1>Creating the story</h1>
+		<div class="wrapper">
+			<div class="left columnwrap">
+				<h2 id="intro2">Introduction</h2>
+				<p>Storytelling has long been one of humanity’s most enduring forms of entertainment, passed down through spoken word, myths, and shared narratives that helped communities make sense of the world. Traditionally, these stories unfolded linearly, guided by a single narrator and experienced collectively by an audience. Today, modern technologies build on this heritage by transforming stories into interactive experiences, where audiences can influence outcomes, explore branching storylines, and participate as co-creators. Through digital media, games, and immersive platforms, storytelling evolves from something we simply listen to into something we actively shape.</p>
+				<h2 id="genres">Genres</h2>
+				<p>Across these interactive forms, auditory storytelling genres shape how listeners experience narrative through physical movement and place. In a thriller, the listener may become an investigative detective, walking between real-world locations to uncover spoken clues, follow leads, and piece together a mystery as it unfolds in their headphones. In a comedy, the story might invite a playful journey, such as following an audio-guided student who moves from one spot to another to find friends scattered across different locations before heading to a party. Historical auditory stories can guide listeners through streets, buildings, or landscapes, allowing them to walk in the footsteps of past events and hear accounts tied directly to the places where history was shaped. In these experiences, genre influences not only the tone of the story, but how movement through physical space becomes an essential part of storytelling itself.</p>
+				<h2 id="pointofview">Point-of-view</h2>
+				<p>In storytelling, third‑person narration (neutral or omniscient) positions the narrator as an external guide. This perspective emphasizes explanation, context, and orientation, helping listeners understand what happened, where they are, and why a place matters. It creates clarity and authority, but also distance: the listener moves through the story as an observer rather than a participant.</p>
+				<p>By contrast, first‑ and second‑person narration increase intimacy and agency. A first‑person voice (“I”) draws the listener into the narrator’s personal experience, encouraging emotional identification as they move through locations. Second‑person narration (“you”) goes even further, directly aligning the listener’s physical actions with the story, making walking through space feel like acting within the narrative itself. Together, these perspectives shift storytelling from guided explanation toward embodied, lived experience.</p>
+				<h2 id="linearnon">Linear/non-linear</h2>
+				<p>In linear storytelling, the narrative unfolds in a fixed order with a clearly defined beginning, middle, and end. Even in auditory, location‑based experiences, the listener is guided along a predetermined path, encountering story segments in a specific sequence as they move from place to place. This structure supports clarity and pacing, and works well with a neutral or guiding narrator who explains events and ensures that all listeners share the same narrative journey. The emphasis is on following the story as it was designed, with limited influence from the listener’s choices.</p>
+				<p>In non‑linear storytelling, the order of events is shaped by the listener’s movement and decisions. Different locations trigger different parts of the narrative, allowing the story to be assembled in multiple ways depending on where the listener walks and what they choose to explore. This structure often pairs well with first‑ or second‑person narration, strengthening the sense of personal involvement and agency. Rather than following a single path, the listener actively navigates the story, turning physical exploration into a key element of meaning and engagement.</p>
+				<h2 id="branching">Branching</h2>
+				<p>Branching storylines are narrative structures where the story can diverge into different paths depending on the listener’s choices, actions, or movement. Rather than following a single sequence, the narrative adapts as the listener moves through locations or makes decisions, resulting in multiple possible versions of the story. In auditory, location‑based experiences, branches are often tied to place: different locations reveal different scenes, perspectives, or outcomes, making physical navigation an integral part of how the story unfolds.</p>
+				<p>When writing branching storylines, it is essential to design for clarity, coherence, and meaningful choice. Each branch should feel intentional and relevant, contributing to a shared theme or narrative world even if listeners experience events in different orders. Writers must carefully manage complexity, ensuring that choices are understandable and grounded in the listener’s movement rather than overwhelming or arbitrary. Equally important is maintaining consistency in voice and point of view across branches, so the listener’s role remains clear and immersive while still allowing their path through the story to feel personal and consequential.</p>
+				
+			</div>
+			<div class="right columnwrap sectionimage">
+				<img src="images/branching.png" alt='Branching storyine' onClick='show(this)' class="zoomable">
+				<h2 id="resources2">Resources</h2>
+				<h3>Slides</h3>
+				<ul>
+					<li>Storytelling - <a href="">storytelling.pdf</a></li>
+					<li>Synopsis and characters - <a href="">synopsis.pdf</a></li>
+				</ul>
+				<h3>Tutorials</h3>
+				<h3 id="links2">Links</h3>
+				<ul>
+					<li>Twine is a tool for telling interactive, nonlinear stories - <a href="https://twinery.org/">twinery.org</a></li>
+					<li>Miro is a useful tool for creating branching storylines - <a href="https://miro.com/">miro.com</a></li>
+					<li>inklewriter is a tool for writing branching storys - <a href="https://www.inklestudios.com/inklewriter/">incklestudios.com</a></li>
+					<li>arti:draft is a tool for writing game plots - <a href="https://www.articy.com/en/">articy.com</a></li>
+					<li>diagrams.net might also be used for creating the flowchart - <a href="draw.io">draw.io</a></li>
+				</ul>
+			</div>
+		</div>
+		
+	</div>
+
+	<div id="ws3" class="session">
+		<h1>Sound and music in storytelling</h1>
+		<div class="wrapper">
+			<div class="left columnwrap">
+				<h2 id="intro3">Introduction</h2>
+				<p>Sound and music play a crucial role in storytelling across film, games, and other media by shaping emotion, guiding attention, and enhancing immersion. Research in communication and media studies highlights how sound design and musical scores create mood, reinforce narrative themes, and provide continuity between scenes. In film, music underscores dramatic tension, while sound effects build realism and atmosphere. In computer games, adaptive soundtracks and spatial audio enhance interactivity, providing players with cues about their environment and reinforcing engagement. Across all these mediums, sound functions as an invisible yet powerful storytelling tool that deepens audience connection and enriches narrative experiences.</p>
+				<h2 id="sound">Recording sound</h2>
+				<p>Most important when recording sound is to listen—before, during, and after the recording. Listen to the environment where you are recording, and always monitor the sound through headphones to hear what the microphone is actually picking up. Adjust the input level carefully to avoid distortion, remembering that recordings that are too loud cannot be fixed afterwards. While high‑quality recordings often require time and expensive equipment, fast and responsive field recordings that capture sound snapshots are often more useful, especially since Panoee works with mp3 files in mono or stereo. Be mindful of microphone placement to reduce unwanted room acoustics, wind, and handling noise, and aim to record in quiet environments with minimal reverberation. Check the recording on site before leaving, take notes on your takes, and avoid relying on laptop or built‑in speakers—good recordings should be evaluated using proper headphones and, ideally, different listening setups.</p>
+				<h2 id="music">Using music</h2>
+				<p>The functions of film music are to boost or change the mood in a scene, to create continuity and expectations, and to mark things, lead/focuse the eye. Music also helps in clarifying and defining the environment, it places the story in the room, geographically and timewise. It can also portray characters, and describe things that are not visible in the image. The principles of filmmusic are that the music is invisible (most often anyway) and it is inaudible. Film music is the creator of emotions, providing narrative clues, and creates continuity and cohesion.</p>
+				
+			</div>
+			<div class="right columnwrap sectionimage">
+				<img src="images/headphones.png" alt='Sound storytelling' onClick='show(this)' class="zoomable">
+				<h2 id="resources3">Resources</h2>
+				<h3>Slides</h3>
+				<ul>
+					<li>Music as narration - <a href=".pdf"></a></li>
+					<li>A text about film music - <a href="resources/filmmusic.pdf">filmmusic.pdf</a></li>
+					<li>Sound design and foley - <a href=".pdf">foley.pdf</a></li>
+				</ul>
+				<h3>Tutorials</h3>
+				<ul>
+					<li>Sound recording (tutorial) - <a href="resources/sound_recording.pdf">sound_recording.pdf</a></li>
+					<li>Editing sound in Audition (tutorial) - <a href="resources/sound_audition.pdf">sound_audition.pdf</a></li>
+					<li>Finding music (tutorial) - <a href="resources/music.pdf">music.pdf</a></li>
+				</ul>
+				<h3 id="links3">Links</h3>
+				<ul>
+					<li>Voice Record Pro for iOS - <a href="https://apps.apple.com/us/app/voice-record-pro/id546983235">Voice Record Pro</a></li>
+					<li>Smart Voice Recorder for Android - <a href="https://play.google.com/store/apps/details?id=com.andrwq.recorder&hl=en_US">Smart Voice Recorder</a></li>
+					<li>Adobe Podcast, voice enhancer - <a href="https://podcast.adobe.com/en/enhance">postcast.adobe.com</a></li>
+					<li>Access to additional sound effects - <a href="https://freesound.org/">freesound.org</a></li>
+					<li>Access to music - <a href="https://freeplaymusic.com/">freeplaymusic.com</a></li>
+					<li>Suno, a GenAI for making music - <a href="https://suno.com/">suno.com</a></li>
+					<li>Luvvoice, text to speech - <a href="https://luvvoice.com/">luvvoice.com</a></li>
+					<li>Voice Maker, text to speech - <a href="https://voicechanger.io/voicemaker">voicechanger.io</a></li>
+					<li>ElevenLabs, text to speech - <a href="https://elevenlabs.io/">elevenlabs.io</a></li>
+					<li>Audacity - <a href="www.audacityteam.org">audacity.org</a></li>
+				</ul>
+			</div>
+		</div>
+	</div>
+
+	<div id="ws4" class="session">
+		<h1>Creating the position based audio story</h1>
+		<div class="wrapper">
+			<div class="left columnwrap">
+				<h2 id="intro4">Introduction</h2>
+				<p>GPS-based audio guide tools are specialized platforms designed to sync digital storytelling with physical locations. By utilizing a "no-code" interface, these tools allow creators to map out specific geographic coordinates—known as geofences—that automatically trigger audio playback on a user’s smartphone via GPS. From robust Content Management Systems (CMS) like izi.TRAVEL to sound-focused platforms like Echoes, these resources handle the complex backend of location tracking, allowing you to focus entirely on content. Whether for tourism, education, or site-specific art, these apps provide the infrastructure to turn any outdoor space into an interactive, narrated experience.</p>
+				<h2 id="precision">Localization precision</h2>
+				<p>While GPS-based audio guide tools offer a seamless hands-free experience, they are bound by the inherent limitations of satellite positioning, which typically offers an average accuracy of 3 to 10 meters under optimal, open-sky conditions. In dense urban environments or areas with heavy tree cover, this precision can drop significantly to 20 or 30 meters due to signal reflection and interference. The primary drawbacks include high battery consumption caused by constant location tracking and "GPS drift," where a user’s position appears to jump even while standing still, potentially triggering audio clips prematurely or repeatedly. To counter these shortcomings, creators must design larger trigger zones—often 50 meters or more—to ensure reliability, as relying on pinpoint accuracy often leads to a frustrating user experience where stories fail to start at the intended landmark.</p>
+				<h2 id="free">The best things in life are free</h2>
+				<p>Most "free" GPS audio tools operate on a freemium model, meaning they are free to start but restrict advanced features behind a paywall. While platforms like izi.TRAVEL allow you to publish public tours for free, they may charge for private or offline access. Common limitations in free versions include branding watermarks, a cap on the number of active tours or downloads, and the absence of detailed analytics to track user engagement. Additionally, premium features like AI-powered text-to-speech, multi-language support, and offline maps—which are critical for areas with poor data coverage—are typically reserved for paid tiers to cover the high costs of map licensing and data hosting.</p>
+				<h2 id="fallback">Fall back solution</h2>
+				<p>The fallback solution might be to use a shared folder in Google Drive, Dropbox, or a similar tool, with a good naming scheme and folder structure, together with a map-based branching story flowchart. This solution, while less elegant, would allow the user/listener to change the sound file playback at specific locations, creating a branching storyline that is tied to specific locations and the decisions of navigation.</p>
+				
+			</div>
+			<div class="right columnwrap sectionimage">
+				<img src="images/position.png" alt='position based story' onClick='show(this)' class="zoomable">
+				<h2 id="resources4">Resources</h2>
+				<h3>Slides</h3>
+				<ul>
+					<li>Tools for GPS connection - <a href=".pdf">gps.pdf</a></li>
+					<li>Naming schemes - <a href=".pdf">naming.pdf</a></li>
+				</ul>
+				<h3 id="links4">Links</h3>
+				<ul>
+					<li>Storyhunt, GPS tracked audio guide - <a href="https://www.storyhunt.io/en/creator">storyhunt.io</a></li>
+					<li>izi.Travel, GPS tracked audio guide - <a hreF="https://www.izi.travel/en/create/individuals">izi.travel</a></li>
+					<li>SmartGuide, mobile app - <a href="https://www.smartguide.app/">smartguide.app</a></li>
+					<li>Guidelia, audio guide tool - <a href="https://guidelia.com/">guidelia.com</a></li>
+					<li>pandasuite, a tool for audio guides<a href="https://pandasuite.com/blog/how-to-create-an-audio-guide/">pandasuite.com</a></li>
+				</ul>
+			</div>
+		</div>
+	</div>
+	<div id="ws5" class="session">
+		<h1>Some photos from the workshop</h1>
+		<div class="wrapper">
+			<div class="left columnwrap">
+				<h2 id=""></h2>
+				<p></p>
+			</div>
+			<div class="right columnwrap">
+				<h2 id=""></h2>
+				<p></p>
+			</div>
+		</div>
+	</div>
+	<div id="ws6" class="session">
+		<h1>Student projects</h1>
+		<div class="wrapper">
+			<div class="left columnwrap">
+				<p></p>
+				
+
+			</div>
+			<div class="right columnwrap sectionimage">
+				<img src="images/final.png" alt='Presentation of the 2024 workshop' onClick='show(this)' class="zoomable">
+			</div>
+		</div>
+	</div>
+</body>
+</html>
