@@ -116,7 +116,6 @@ li {
 	color: #f542f2;
 }
 #title {
-	color: #fff;
 	text-align: left;
 	position: absolute;
 	top: 0px;
@@ -126,6 +125,7 @@ li {
 	width: 100%;
 }
 #title h1 {
+	color: #fff;
 	width: 100%;
 	border-bottom: none;
 	margin-top: -3px;
