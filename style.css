@@ -36,7 +36,7 @@ h1 {
 	padding: 9px 12px;
 	color: #000;
 	text-align: left;
-	border-bottom: solid 1px #fff;
+	border-bottom: solid 1px #000;
 	text-transform: uppercase;
 }
 h2 {
@@ -200,11 +200,11 @@ li {
 	white-space: nowrap;
 }
 #nav ul li:hover {
-	color: #999;
+	color: #fbff64;
 	text-decoration: underline;
 }
 #nav ul li a:hover {
-	color: #999;
+	color: #fbff64;
 	text-decoration: underline;
 }
 #nav ul img {
@@ -268,7 +268,7 @@ li {
 	text-decoration: none;
 }
 #navbutton ul a:hover {
-	color: #999;
+	color: #fbff64;
 	text-decoration: underline;
 }
 
@@ -291,7 +291,7 @@ a {
 	text-decoration: underline;
 }
 a:hover {
-	color: #636363;
+	color: #fbff64;
 	text-decoration: underline;
 }
 
