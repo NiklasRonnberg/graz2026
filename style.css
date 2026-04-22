@@ -23,7 +23,7 @@ body {
 
 code {
 	font-family: Consolas,"courier new";
-  color: #fff;
+  color: #000;
   background-color: rgba(0,0,0,0.75);
   font-size: 90%;
 }
@@ -287,11 +287,11 @@ li {
 
 
 a {
-	color: #fff;
+	color: #000;
 	text-decoration: underline;
 }
 a:hover {
-	color: #999;
+	color: #636363;
 	text-decoration: underline;
 }
 
