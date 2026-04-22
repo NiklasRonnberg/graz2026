@@ -267,7 +267,7 @@ li {
 	font-size: 22px;
 	-webkit-font-smoothing: antialiased;
 }
-#navbutton li {
+#navbutton a {
 	color: #fff;
 }
 #navbotton a {
