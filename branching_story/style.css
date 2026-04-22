@@ -1,0 +1,55 @@
+body {
+  margin: 0;
+  padding: 0;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  background: #0d0d0d;
+  color: #eaeaea;
+}
+
+#story {
+  max-width: 60ch;
+  margin: 8vh auto;
+  padding: 0 1.5rem;
+  line-height: 1.7;
+  font-size: 1.1rem;
+  background: #121212;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+}
+
+h1 {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin-bottom: 1.5rem;
+}
+
+#choices {
+  margin-top: 2.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+button {
+  width: 100%;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  color: #ddd;
+  padding: 0.9rem 1rem;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+button:hover {
+  background: #2a2a2a;
+  border-color: #555;
+  color: #fff;
+}
+
+button:active {
+  transform: scale(0.98);
+}
