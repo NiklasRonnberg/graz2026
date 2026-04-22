@@ -246,6 +246,7 @@ li {
 	height: 24px;
 }
 #navbutton ul ul {
+	color: #fff;
 	padding: 3px;
 	display: none;
 	width: 140px;
@@ -281,9 +282,6 @@ li {
 #navbutton ul ul li:hover img {
 	opacity: 0.4;
     filter: alpha(opacity=40);
-}
-#menuOptions {
-	color: #fff;
 }
 
 
