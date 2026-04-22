@@ -227,6 +227,7 @@ li {
 	clear: both;
 }
 #navbutton ul {
+	color: #fff;
 	width: 140px;
 	height: 36px;
 	padding: 0;
@@ -241,6 +242,7 @@ li {
 }
 
 #navbutton ul li img {
+	color: #fff;
 	margin-top: 6px;
 	margin-left: 84px;
 	height: 24px;
@@ -275,6 +277,7 @@ li {
 }
 
 #navbutton ul ul img {
+	color: #fff;
 	margin: 0;
 	padding: 0;
 	height: 32px;
