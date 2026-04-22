@@ -34,7 +34,7 @@ code {
 h1 {
 	font-size: 32px;
 	padding: 9px 12px;
-	color: #fff;
+	color: #000;
 	text-align: left;
 	border-bottom: solid 1px #fff;
 	text-transform: uppercase;
@@ -42,7 +42,7 @@ h1 {
 h2 {
 	font-size: 28px;
 	padding: 9px 12px;
-	color: #fff;
+	color: #000;
 	vertical-align: middle;
 	text-align: left;
 	text-transform: uppercase;
@@ -51,21 +51,21 @@ h2 {
 h3 {
 	font-size: 26px;
 	padding: 9px 0px 0px 12px;
-	color: #fff;
+	color: #000;
 	vertical-align: middle;
 	text-align: left;
 }
 p {
 	font-size: 24px;
 	padding: 9px 12px;
-	color: #fff;
+	color: #000;
 	text-align: left;
 	clear: right;
 }
 li {
 	font-size: 24px;
 	padding: 0px 22px;
-	color: #fff;
+	color: #000;
 	text-align: left;
 	list-style: none;
 }
