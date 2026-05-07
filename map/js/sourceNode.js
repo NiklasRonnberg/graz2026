@@ -1,0 +1,543 @@
+class SourceNode {
+    constructor(map, latlng) {
+        this.audioMode = "binary"; // default
+        this.circleStyleDashed = false;
+
+        this.map = map;
+        this.latlng = latlng;
+        this.radius = 25;
+
+        this.hasAudio = false;
+
+        this.isPreviewPlaying = false;
+        this.loopEnabled = false
+
+        if (!SourceNode.allNodes) {
+            SourceNode.allNodes = [];
+        }
+        SourceNode.allNodes.push(this);
+
+        this.wasInside = false;
+
+        this.createVisuals();
+        this.enableResize();
+        this.enableMove();
+    }
+
+    async loadAudio() {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = "audio/*";
+
+        input.click();
+
+        input.onchange = async (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            this.audioFileName = file.name;
+            this.updateLabel(); 
+
+            const arrayBuffer = await file.arrayBuffer();
+
+            if (!SourceNode.audioCtx) {
+                SourceNode.audioCtx = new AudioContext();
+            }
+
+            this.audioBuffer = await SourceNode.audioCtx.decodeAudioData(arrayBuffer);
+
+            this.startAudio();
+            this.hasAudio = true;
+        };
+    }
+
+    startAudio() {
+        const ctx = SourceNode.audioCtx;
+
+        if (ctx.state === "suspended") {
+            ctx.resume();
+        }
+
+        this.source = ctx.createBufferSource();
+        this.source.buffer = this.audioBuffer;
+        this.source.loop = this.loopEnabled;
+
+        this.gainNode = ctx.createGain();
+        this.gainNode.gain.value = 0; // start silent
+
+        this.source.connect(this.gainNode).connect(ctx.destination);
+
+        this.source.start();
+    }
+
+    restartAudio() {
+        if (!this.audioBuffer) return;
+
+        const ctx = SourceNode.audioCtx;
+
+        if (this.source) {
+            try {
+                this.source.stop();
+            } catch {}
+        }
+
+        this.source = ctx.createBufferSource();
+        this.source.buffer = this.audioBuffer;
+        this.source.loop = this.loopEnabled;
+
+        this.gainNode = ctx.createGain();
+        this.gainNode.gain.value = 0;
+
+        this.source.connect(this.gainNode).connect(ctx.destination);
+
+        this.source.start(0);
+    }
+
+
+    createVisuals() {
+        this.dot = L.circleMarker(this.latlng, {
+            radius: 6,
+            color: "rgba(155, 0, 0, 1)"
+        }).addTo(this.map);
+
+        this.circle = L.circle(this.latlng, {
+            radius: this.radius,
+            color: "rgba(255, 0, 0, 0.4)",
+            fillColor: "rgba(255, 0, 0, 0.2)",
+            fillOpacity: 1
+        }).addTo(this.map);
+
+        this.circleStyleDashed = false;
+
+        this.circle.on("dblclick", (e) => {
+            L.DomEvent.stopPropagation(e);
+
+            this.circleStyleDashed = !this.circleStyleDashed;
+
+            this.circle.setStyle({
+                dashArray: this.circleStyleDashed ? "4,4" : null
+            });
+
+            this.audioMode = this.circleStyleDashed ? "fade" : "binary";
+        });
+
+        this.controls = L.marker(this.latlng, {
+            icon: L.divIcon({
+                className: "node-controls",
+                html: `
+                    <div class="controls-row">
+                        <div class="file-button missing-audio" title="Click to load an audio file">📁</div>
+                        <div class="delete-button" title="Remove this sound node">🗑</div>
+                        <div class="loop-button" title="Enable or disable looping playback">➡</div>
+                        <div class="preview-button" title="Play or stop preview sound">▶</div>
+                    </div>
+                `,
+                iconSize: [120, 40],
+                iconAnchor: [60, 20]
+            })
+        }).addTo(this.map);
+
+        this.bindControls();
+
+        this.controls.on("add", () => {
+            this.bindControls();
+        });
+
+       
+        
+        this.label = L.marker(this.latlng, {
+            icon: L.divIcon({
+                className: "node-label",
+                html: "",
+                iconSize: [180, 20]
+            })
+        }).addTo(this.map);
+
+        // offset it slightly to the right
+        this.updatePreviewPosition();
+
+        // click handler 
+        this.dot.on("click", (e) => {
+            L.DomEvent.stopPropagation(e);
+
+            SourceNode.allNodes.forEach(n => n.hideControls());
+            this.showControls();
+        });
+
+        this.circle.on("click", (e) => {
+            L.DomEvent.stopPropagation(e);
+
+            SourceNode.allNodes.forEach(n => n.hideControls());
+            this.showControls();
+        }); 
+        
+        setTimeout(() => {
+            this.updateLabel();
+        }, 0);
+
+    }
+
+    togglePreview() {
+        if (this.isPreviewPlaying) {
+            this.stopPreview();
+        } else {
+            this.startPreview();
+        }
+
+        this.updatePreviewIcon();
+    }
+
+    updateLoopIcon() {
+        const el = this.controls?.getElement();
+        if (!el) return;
+
+        const loopBtn = el.querySelector(".loop-button");
+        if (!loopBtn) return;
+
+        loopBtn.innerHTML = this.loopEnabled ? "🔁" : "➡";
+
+        if (this.loopEnabled) {
+            loopBtn.classList.add("active");
+        } else {
+            loopBtn.classList.remove("active");
+        }
+    }
+
+    updatePreviewPosition() {
+        const lat = this.latlng.lat;
+        const lng = this.latlng.lng;
+
+        const offset = this.radius / (111320 * Math.cos(lat * Math.PI / 180));
+
+        const labelPos = [
+                lat + (this.radius / 111320), // vertical offset
+                lng
+            ];
+        
+        if (this.label) {
+            this.label.setLatLng(labelPos);
+        }
+
+        if (this.label) {
+            const point = this.map.latLngToLayerPoint(this.latlng);
+            const labelPoint = L.point(point.x, point.y - 25);
+            const labelPos = this.map.layerPointToLatLng(labelPoint);
+
+            this.label.setLatLng(labelPos);
+        }
+
+        if (this.controls) {
+            const point = this.map.latLngToLayerPoint(this.latlng);
+            const controlPoint = L.point(point.x, point.y + 25);
+            const controlPos = this.map.layerPointToLatLng(controlPoint);
+
+            this.controls.setLatLng(controlPos);
+        }
+
+    }
+
+    showPreview() {
+        // hide all other preview buttons
+        if (SourceNode.allNodes) {
+            SourceNode.allNodes.forEach(n => {
+                if (n.previewMarker) {
+                    n.map.removeLayer(n.previewMarker);
+                }
+                if (n.deleteMarker) {
+                    n.map.removeLayer(n.deleteMarker);
+                }
+                if (n.fileMarker) {
+                    n.map.removeLayer(n.fileMarker);
+                }
+                if (n.loopMarker) {
+                    n.map.removeLayer(n.loopMarker);
+                }
+            });
+        }
+
+        // update icons after it's in DOM
+        this.updatePreviewIcon();
+        this.updateLoopIcon();
+    }
+
+    // MOVE (drag the node)
+    enableMove() {
+        const map = this.map;
+
+        let moving = false;
+
+        const onMouseMove = (e) => {
+            if (!moving) return;
+
+            this.latlng = e.latlng;
+
+            this.dot.setLatLng(e.latlng);
+            this.circle.setLatLng(e.latlng);
+
+            this.updatePreviewPosition();
+        };
+
+        const stopMove = (e) => {
+            moving = false;
+
+            map.dragging.enable();
+            map.off("mousemove", onMouseMove);
+            map.off("mouseup", stopMove);
+
+            if (e) L.DomEvent.stopPropagation(e);
+        };
+
+        const startMove = (e) => {
+            // prevent move if resizing
+            if (window.isResizing) return;
+
+            moving = true;
+
+            map.dragging.disable();
+
+            map.on("mousemove", onMouseMove);
+            map.on("mouseup", stopMove);
+
+            L.DomEvent.stopPropagation(e);
+        };
+
+        // Attach to both dot and circle center
+        this.dot.on("mousedown", startMove);
+
+        this.circle.on("mousedown", (e) => {
+            const center = this.circle.getLatLng();
+            const dist = center.distanceTo(e.latlng);
+            const tol = 10;
+
+            // Only allow move when clicking near center, not edge
+            if (Math.abs(dist - this.radius) < tol) return;
+
+            startMove(e);
+        });
+    }
+
+    // RESIZE (already had, now inside class)
+    enableResize() {
+        const map = this.map;
+
+        const onMouseMove = (e) => {
+            const center = this.circle.getLatLng();
+            let newRadius = center.distanceTo(e.latlng);
+
+            newRadius = Math.max(5, newRadius);
+
+            this.circle.setRadius(newRadius);
+            this.radius = newRadius;
+
+            this.updatePreviewPosition();
+        };
+
+        const stopResize = (e) => {
+            window.isResizing = false;
+
+            map.dragging.enable();
+            map.off("mousemove", onMouseMove);
+            map.off("mouseup", stopResize);
+
+            if (e) L.DomEvent.stopPropagation(e);
+        };
+
+        this.circle.on("mousedown", (e) => {
+            const center = this.circle.getLatLng();
+            const dist = center.distanceTo(e.latlng);
+            const tol = 10;
+
+            // only allow resize on edge
+            if (Math.abs(dist - this.radius) > tol) return;
+
+            window.isResizing = true;
+
+            map.dragging.disable();
+
+            map.on("mousemove", onMouseMove);
+            map.on("mouseup", stopResize);
+
+            L.DomEvent.stopPropagation(e);
+        });
+
+        this.circle.on("click", (e) => {
+            L.DomEvent.stopPropagation(e);
+        });
+    }
+
+    // Sound preview
+    startPreview() {
+        if (!this.audioBuffer) return;
+
+        if (!SourceNode.audioCtx) {
+            SourceNode.audioCtx = new AudioContext();
+        }
+
+        const ctx = SourceNode.audioCtx;
+
+        if (ctx.state === "suspended") {
+            ctx.resume();
+        }
+
+        this.stopPreview();
+
+        this.previewSource = ctx.createBufferSource();
+        this.previewSource.buffer = this.audioBuffer;
+        this.previewSource.loop = this.loopEnabled;
+
+        this.previewGain = ctx.createGain();
+        this.previewGain.gain.value = 1;
+
+        this.previewSource.connect(this.previewGain).connect(ctx.destination);
+        this.previewSource.start();
+
+        this.isPreviewPlaying = true;
+    }
+
+    stopPreview() {
+        if (this.previewSource) {
+            try {
+                this.previewSource.stop();
+            } catch {}
+            this.previewSource = null;
+        }
+
+        this.isPreviewPlaying = false;
+    }
+
+    updatePreviewIcon() {
+        const el = this.controls?.getElement();
+        if (!el) return;
+
+        const previewBtn = el.querySelector(".preview-button");
+        if (!previewBtn) return;
+
+        previewBtn.innerHTML = this.isPreviewPlaying ? "⏹" : "▶";
+    }
+
+    updateLabel() {
+        const el = this.label.getElement();
+        if (!el) return;
+
+        if (this.audioFileName) {
+            el.innerHTML = this.audioFileName;
+        } else {
+            el.innerHTML = ""; // empty if no file
+        }
+    }
+
+
+    showControls() {
+        if (!this.map.hasLayer(this.controls)) {
+            this.controls.addTo(this.map);
+        }
+    }
+
+    hideControls() {
+        if (this.map.hasLayer(this.controls)) {
+            this.map.removeLayer(this.controls);
+        }
+    }
+
+
+
+    // REMOVE node completely
+    remove() {
+        [this.dot, this.circle, this.controls, this.label].forEach(layer => {
+            if (layer) this.map.removeLayer(layer);
+        });
+
+        if (this.source) {
+            this.source.stop();
+        }
+
+        if (this.onRemove) {
+            this.onRemove(this);
+        }
+    }
+
+    bindControls() {
+        const el = this.controls.getElement();
+        if (!el) return;
+
+        const preview = el.querySelector(".preview-button");
+        const del = el.querySelector(".delete-button");
+        const file = el.querySelector(".file-button");
+        const loop = el.querySelector(".loop-button");
+
+        if (preview) {
+            preview.onclick = (e) => {
+                e.stopPropagation();
+                this.togglePreview();
+            };
+        }
+
+        if (del) {
+            del.onclick = (e) => {
+                e.stopPropagation();
+                this.remove();
+            };
+        }
+
+        if (file) {
+            file.onclick = (e) => {
+                e.stopPropagation();
+
+                const input = document.createElement("input");
+                input.type = "file";
+                input.accept = "audio/*";
+
+                input.onchange = async (event) => {
+                    const fileObj = event.target.files[0];
+                    if (!fileObj) return;
+
+                    this.audioFileName = fileObj.name;
+                    this.updateLabel();
+
+                    const arrayBuffer = await fileObj.arrayBuffer();
+
+                    if (!SourceNode.audioCtx) {
+                        SourceNode.audioCtx = new AudioContext();
+                    }
+
+                    this.audioBuffer =
+                        await SourceNode.audioCtx.decodeAudioData(arrayBuffer);
+
+                    this.startAudio();
+                    this.hasAudio = true;
+                    file.classList.remove("missing-audio");
+                };
+
+                input.click();
+            };
+        }
+
+        if (loop) {
+            loop.onclick = (e) => {
+                e.stopPropagation();
+
+                this.loopEnabled = !this.loopEnabled;
+
+                if (this.previewSource) {
+                    this.stopPreview();      // ❗ stop looping immediately
+                    this.startPreview();     // restart with new loop state
+                }
+
+                if (this.source) {
+                    this.restartAudio();
+                }
+
+                this.updateLoopIcon();
+            };
+        }
+
+        if (this.hasAudio) {
+            file.classList.remove("missing-audio");
+        } else {
+            file.classList.add("missing-audio");
+        }
+
+        this.updateLoopIcon();
+        this.updatePreviewIcon();
+    }
+}

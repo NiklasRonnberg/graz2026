@@ -1,0 +1,192 @@
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+}
+
+#map {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+}
+
+
+
+
+.node-controls {
+    width: 120px;
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.preview-button,
+.delete-button,
+.file-button,
+.loop-button {
+    background: white;
+    border: 1px solid #bbbbbb;
+    border-radius: 4px;
+
+    font-size: 12px;
+    width: 34px;
+    height: 34px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    cursor: pointer;
+    user-select: none;
+
+    transition: 
+        background 0.12s,
+        transform 0.08s,
+        border-color 0.12s;
+}
+
+.preview-button:hover,
+.delete-button:hover,
+.file-button:hover,
+.loop-button:hover {
+    background: #eee;
+}
+
+.preview-button:active,
+.file-button:active,
+.delete-button:active,
+.loop-button:active {
+    background: #ccc;
+    border-color: #000;
+    transform: scale(0.9);
+}
+
+.loop-button.active {
+    background: #ccc;
+}
+
+.loop-button.active:hover {
+    background: #ddd;
+}
+
+
+.file-button.missing-audio {
+    background: #ff9999;
+    border-color: #fff;
+}
+
+
+.node-controls {
+    pointer-events: none;
+}
+
+.controls-row {
+    display: flex;
+    gap: 4px;
+    pointer-events: auto;
+}
+
+
+
+
+.leaflet-top.leaflet-left {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+}
+
+
+.sim-button,
+.save-button,
+.load-button,
+.title-button,
+.map-toggle-button,
+.export-button {
+    background: white;
+    border: 2px solid #bbbbbb;
+    border-radius: 4px;
+
+    width: 34px;
+    height: 58px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 18px;      /* scale icon */
+    cursor: pointer;
+    user-select: none;
+
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+.map-toggle-button:hover,
+.load-button:hover,
+.save-button:hover,
+.sim-button:hover,
+.title-button:hover,
+.export-button:hover {
+    background: #eee;
+    /*background-size: 110%;
+    transform: scale(1.1);*/
+}
+
+.sim-button.active {
+    background: #666;
+    color: white;
+    border-color: #000;
+}
+
+.sim-button.active:hover {
+    background: #555;
+}
+
+/*.map-toggle-button {
+    background-image: url("./assets/maptoggle.png");
+}
+.load-button {
+    background-image: url("./assets/load.png");
+}
+.save-button {
+    background-image: url("./assets/save.png");
+}*/
+
+
+.map-toggle-button:active,
+.load-button:active,
+.save-button:active,
+.sim-button:active,
+.title-button:active,
+.export-button:active {
+    transform: scale(0.95);
+    background-size: 80%;
+}
+
+
+
+.node-label {
+    width: 180px; 
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+
+    background: rgba(0,0,0,0.25);
+    color: white;
+
+    padding: 2px;
+    border-radius: 4px;
+
+    font-size: 11px;
+    text-align: center;
+
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+
