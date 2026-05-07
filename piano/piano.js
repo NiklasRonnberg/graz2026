@@ -3,24 +3,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const nodesData = [
   {
-    "lat": 47.071539448347096,
-    "lng": 15.418005287647249,
+    "lat": 47.07159607947099,
+    "lng": 15.41799992322922,
     "radius": 25,
     "audioMode": "binary",
     "loopEnabled": false,
     "audioFileName": "piano.wav"
   },
   {
-    "lat": 47.071141201970015,
-    "lng": 15.41774779558182,
+    "lat": 47.07110101180334,
+    "lng": 15.417723655700685,
     "radius": 25,
     "audioMode": "binary",
     "loopEnabled": false,
     "audioFileName": "piano.wav"
   },
   {
-    "lat": 47.070856216497305,
-    "lng": 15.416318178176882,
+    "lat": 47.07088361901281,
+    "lng": 15.416296720504763,
     "radius": 25,
     "audioMode": "binary",
     "loopEnabled": false,
@@ -192,12 +192,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
     btn.className = "start-button";
 
-    btn.onclick = async () => {
+    btn.onclick = () => {
 
         audioCtx.resume();
 
         nodes.forEach(node => {
             startAudio(node);
+
+            if (currentPosition) {
+                const dist = currentPosition.distanceTo(node.latlng);
+                node.wasInside = dist <= node.data.radius;
+            }
         });
 
         if (currentPosition) {
