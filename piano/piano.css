@@ -18,4 +18,25 @@
             fill: rgba(255, 0, 0, 0.2);
             fill-opacity: 1;
         }
+
+        .start-button {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 50vw;
+            height: 25vh;
+            padding: 12px;
+            z-index: 1000;
+            font-size: 10vh;
+            background: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+        }
+
+        .start-button:hover {
+            background: #eee;
+        }
         

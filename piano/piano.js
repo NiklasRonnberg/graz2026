@@ -3,25 +3,25 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const nodesData = [
   {
-    "lat": 47.07159607947099,
-    "lng": 15.417946279048921,
-    "radius": 15.031782022962416,
-    "audioMode": "binary",
-    "loopEnabled": false,
-    "audioFileName": "piano.wav"
-  },
-  {
-    "lat": 47.07115033609455,
-    "lng": 15.41773170232773,
+    "lat": 47.071552236025504,
+    "lng": 15.418005287647249,
     "radius": 25,
     "audioMode": "binary",
     "loopEnabled": false,
     "audioFileName": "piano.wav"
   },
   {
-    "lat": 47.070865350670715,
-    "lng": 15.416294038295748,
-    "radius": 23.41073346535289,
+    "lat": 47.07115216291928,
+    "lng": 15.417702198028566,
+    "radius": 25,
+    "audioMode": "binary",
+    "loopEnabled": false,
+    "audioFileName": "piano.wav"
+  },
+  {
+    "lat": 47.070858043332116,
+    "lng": 15.416374504566194,
+    "radius": 25,
     "audioMode": "binary",
     "loopEnabled": false,
     "audioFileName": "piano.wav"
@@ -35,19 +35,58 @@ document.addEventListener("DOMContentLoaded", () => {
         maxNativeZoom: 19
     }).addTo(map);
 
-    let audioCtx = null;
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const nodes = [];
 
-    // ✅ USER MARKER (GPS)
-    let userMarker = L.circleMarker([0, 0], {
+    let currentPosition = null;
+
+    const userMarker = L.circleMarker([0, 0], {
         radius: 6,
         color: "green"
     }).addTo(map);
 
+    function startAudio(node) {
+        if (!node.audioBuffer) return;
+
+        const source = audioCtx.createBufferSource();
+        source.buffer = node.audioBuffer;
+        source.loop = node.data.loopEnabled;
+
+        const gainNode = audioCtx.createGain();
+        gainNode.gain.value = 0;
+
+        source.connect(gainNode).connect(audioCtx.destination);
+        source.start();
+
+        node.source = source;
+        node.gainNode = gainNode;
+    }
+
+    function restartAudio(node) {
+        if (!node.audioBuffer) return;
+
+        if (node.source) {
+            try { node.source.stop(); } catch {}
+        }
+
+        const source = audioCtx.createBufferSource();
+        source.buffer = node.audioBuffer;
+        source.loop = node.data.loopEnabled;
+
+        const gainNode = audioCtx.createGain();
+        gainNode.gain.value = 0;
+
+        source.connect(gainNode).connect(audioCtx.destination);
+        source.start(0);
+
+        node.source = source;
+        node.gainNode = gainNode;
+    }
+
     function createNode(n) {
         const latlng = L.latLng(n.lat, n.lng);
 
-        const circle = L.circle(latlng, {
+        L.circle(latlng, {
             radius: n.radius,
             color: "rgba(255,0,0,0.4)",
             fillColor: "rgba(255,0,0,0.2)",
@@ -55,76 +94,80 @@ document.addEventListener("DOMContentLoaded", () => {
             dashArray: n.audioMode === "fade" ? "4,4" : null
         }).addTo(map);
 
-        const marker = L.circleMarker(latlng, {
+        L.circleMarker(latlng, {
             radius: 6,
             color: "rgba(155,0,0,1)"
         }).addTo(map);
 
-        let audioBuffer = null;
-        let gainNode = null;
-        let source = null;
+        const node = {
+            latlng,
+            data: n,
+            audioBuffer: null,
+            source: null,
+            gainNode: null,
+            wasInside: false
+        };
 
-        function startAudio() {
-            if (!audioCtx || !audioBuffer) return;
+        nodes.push(node);
 
-            source = audioCtx.createBufferSource();
-            source.buffer = audioBuffer;
-            source.loop = n.loopEnabled;
-
-            gainNode = audioCtx.createGain();
-            gainNode.gain.value = 0;
-
-            source.connect(gainNode).connect(audioCtx.destination);
-            source.start();
-        }
-
-        // ✅ load audio from /sounds/
         if (n.audioFileName) {
             fetch("sounds/" + n.audioFileName)
                 .then(res => res.arrayBuffer())
                 .then(buf => audioCtx.decodeAudioData(buf))
                 .then(decoded => {
-                    audioBuffer = decoded;
-                    startAudio();
+                    node.audioBuffer = decoded;
+
+                    if (audioCtx.state === "running") {
+                        startAudio(node);
+                    }
+                })
+                .catch(err => {
+                    console.error("Audio load failed:", n.audioFileName, err);
                 });
         }
-
-        nodes.push({
-            latlng,
-            gainNode,
-            data: n
-        });
     }
 
-    // ✅ create nodes
     nodesData.forEach(createNode);
 
-    // ✅ center map
     if (nodesData.length > 0) {
         const bounds = L.latLngBounds(nodesData.map(n => [n.lat, n.lng]));
         map.fitBounds(bounds);
     }
 
-    // ✅ AUDIO UPDATE (based on user position)
     function updateAudio(userPos) {
+
         if (!audioCtx) return;
 
+        const now = audioCtx.currentTime;
+
         nodes.forEach(node => {
+
             if (!node.gainNode) return;
+            if (!node.audioBuffer) return;
 
-            const dist = userPos.distanceTo(node.latlng);
+            const distance = userPos.distanceTo(node.latlng);
+            const isInside = distance <= node.data.radius;
 
-            if (node.data.audioMode === "binary") {
-                node.gainNode.gain.value =
-                    dist < node.data.radius ? 1 : 0;
-            } else {
-                const t = Math.max(0, 1 - dist / node.data.radius);
-                node.gainNode.gain.value = t;
+            // restart when entering
+            if (isInside && node.wasInside === false) {
+                restartAudio(node);
             }
+
+            node.wasInside = isInside;
+
+            let volume;
+
+            if (node.data.audioMode === "fade") {
+                volume = Math.max(0, Math.min(1, 1 - (distance / node.data.radius)));
+            } else {
+                volume = (distance <= node.data.radius) ? 1 : 0;
+            }
+
+            node.gainNode.gain.setTargetAtTime(volume, now, 0.05);
         });
     }
 
-    // ✅ GPS TRACKING
+    // GPS tracking
     if (navigator.geolocation) {
         navigator.geolocation.watchPosition(
             (pos) => {
@@ -133,30 +176,33 @@ document.addEventListener("DOMContentLoaded", () => {
                     pos.coords.longitude
                 );
 
-                userMarker.setLatLng(latlng);
+                currentPosition = latlng;
 
+                userMarker.setLatLng(latlng);
                 updateAudio(latlng);
             },
-            () => {
-                console.warn("GPS not available");
-            },
+            () => console.warn("GPS not available"),
             { enableHighAccuracy: true }
         );
     }
 
-    // ✅ START BUTTON (audio context unlock)
+    // START BUTTON
     const btn = document.createElement("button");
     btn.innerText = "Start";
-    btn.style.position = "absolute";
-    btn.style.top = "20px";
-    btn.style.left = "50%";
-    btn.style.transform = "translateX(-50%)";
-    btn.style.padding = "10px 20px";
-    btn.style.zIndex = 1000;
+
+    btn.className = "start-button";
 
     btn.onclick = async () => {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
         await audioCtx.resume();
+
+        nodes.forEach(node => {
+            startAudio(node);
+        });
+
+        if (currentPosition) {
+            updateAudio(currentPosition);
+        }
 
         btn.remove();
     };
