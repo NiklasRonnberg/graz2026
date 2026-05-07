@@ -7,6 +7,9 @@ class SourceNode {
         this.latlng = latlng;
         this.radius = 25;
 
+        this.isRectangle = false;
+        this.rectBounds = null;
+
         this.hasAudio = false;
 
         this.isPreviewPlaying = false;
@@ -130,6 +133,9 @@ class SourceNode {
                         <div class="delete-button" title="Remove this sound node">🗑</div>
                         <div class="loop-button" title="Enable or disable looping playback">➡</div>
                         <div class="preview-button" title="Play or stop preview sound">▶</div>
+                    </div>
+                    <div class="controls-row">
+                        <div class="shape-button" title="Toggle circle / rectangle">▭</div>
                     </div>
                 `,
                 iconSize: [120, 40],
@@ -269,13 +275,31 @@ class SourceNode {
         const onMouseMove = (e) => {
             if (!moving) return;
 
+            const dLat = e.latlng.lat - this.latlng.lat;
+            const dLng = e.latlng.lng - this.latlng.lng;
+
             this.latlng = e.latlng;
 
             this.dot.setLatLng(e.latlng);
             this.circle.setLatLng(e.latlng);
 
+            if (this.isRectangle && this.rectBounds && this.rect) {
+
+                this.rectBounds.north += dLat;
+                this.rectBounds.south += dLat;
+                this.rectBounds.east += dLng;
+                this.rectBounds.west += dLng;
+
+                this.rect.setBounds([
+                    [this.rectBounds.south, this.rectBounds.west],
+                    [this.rectBounds.north, this.rectBounds.east]
+                ]);
+            }
+
             this.updatePreviewPosition();
         };
+
+
 
         const stopMove = (e) => {
             moving = false;
@@ -321,6 +345,30 @@ class SourceNode {
         const map = this.map;
 
         const onMouseMove = (e) => {
+            if (this.isRectangle && this.rectBounds && this.rect) {
+
+                const lat = e.latlng.lat;
+                const lng = e.latlng.lng;
+
+                const dNorth = Math.abs(lat - this.rectBounds.north);
+                const dSouth = Math.abs(lat - this.rectBounds.south);
+                const dEast = Math.abs(lng - this.rectBounds.east);
+                const dWest = Math.abs(lng - this.rectBounds.west);
+
+                const min = Math.min(dNorth, dSouth, dEast, dWest);
+
+                if (min === dNorth) this.rectBounds.north = lat;
+                else if (min === dSouth) this.rectBounds.south = lat;
+                else if (min === dEast) this.rectBounds.east = lng;
+                else if (min === dWest) this.rectBounds.west = lng;
+
+                this.rect.setBounds([
+                    [this.rectBounds.south, this.rectBounds.west],
+                    [this.rectBounds.north, this.rectBounds.east]
+                ]);
+
+                return;
+            }
             const center = this.circle.getLatLng();
             let newRadius = center.distanceTo(e.latlng);
 
@@ -343,17 +391,32 @@ class SourceNode {
         };
 
         this.circle.on("mousedown", (e) => {
-            const center = this.circle.getLatLng();
-            const dist = center.distanceTo(e.latlng);
-            const tol = 10;
+            if (this.isRectangle && this.rectBounds) {
 
-            // only allow resize on edge
-            if (Math.abs(dist - this.radius) > tol) return;
+                const lat = e.latlng.lat;
+                const lng = e.latlng.lng;
+
+                const dNorth = Math.abs(lat - this.rectBounds.north);
+                const dSouth = Math.abs(lat - this.rectBounds.south);
+                const dEast = Math.abs(lng - this.rectBounds.east);
+                const dWest = Math.abs(lng - this.rectBounds.west);
+
+                const min = Math.min(dNorth, dSouth, dEast, dWest);
+                const tol = 0.00005;
+
+                if (min > tol) return;
+
+            } else {
+                const center = this.circle.getLatLng();
+                const dist = center.distanceTo(e.latlng);
+                const tol = 10;
+
+                if (Math.abs(dist - this.radius) > tol) return;
+            }
 
             window.isResizing = true;
 
             map.dragging.disable();
-
             map.on("mousemove", onMouseMove);
             map.on("mouseup", stopResize);
 
@@ -443,7 +506,7 @@ class SourceNode {
 
     // REMOVE node completely
     remove() {
-        [this.dot, this.circle, this.controls, this.label].forEach(layer => {
+        [this.dot, this.circle, this.rect, this.controls, this.label].forEach(layer => {
             if (layer) this.map.removeLayer(layer);
         });
 
@@ -537,7 +600,164 @@ class SourceNode {
             file.classList.add("missing-audio");
         }
 
+        const shape = el.querySelector(".shape-button");
+
+        if (shape) {
+            shape.onclick = (e) => {
+                e.stopPropagation();
+                this.toggleShape();
+                shape.innerHTML = this.isRectangle ? "◯" : "▭";
+            };
+        }
+
         this.updateLoopIcon();
         this.updatePreviewIcon();
+    }
+    
+    createRectangle() {
+        const lat = this.latlng.lat;
+        const lng = this.latlng.lng;
+
+        const latOffset = this.radius / 111320;
+        const lngOffset = this.radius / (111320 * Math.cos(lat * Math.PI / 180));
+
+        this.rectBounds = {
+            north: lat + latOffset,
+            south: lat - latOffset,
+            east: lng + lngOffset,
+            west: lng - lngOffset
+        };
+
+        this.rect = L.rectangle(
+            [
+                [this.rectBounds.south, this.rectBounds.west],
+                [this.rectBounds.north, this.rectBounds.east]
+            ],
+            {
+                color: "rgba(255, 0, 0, 0.4)",
+                fillColor: "rgba(255, 0, 0, 0.2)",
+                fillOpacity: 1,
+                dashArray: this.circleStyleDashed ? "4,4" : null
+            }
+        ).addTo(this.map);
+
+        this.rect.on("click", (e) => {
+            L.DomEvent.stopPropagation(e);
+
+            SourceNode.allNodes.forEach(n => n.hideControls());
+            this.showControls();
+        });
+
+        this.rect.on("dblclick", (e) => {
+            L.DomEvent.stopPropagation(e);
+
+            this.circleStyleDashed = !this.circleStyleDashed;
+
+            this.rect.setStyle({
+                dashArray: this.circleStyleDashed ? "4,4" : null
+            });
+
+            this.audioMode = this.circleStyleDashed ? "fade" : "binary";
+
+            const el = this.controls?.getElement();
+            if (el) {
+                const shapeBtn = el.querySelector(".shape-button");
+                if (shapeBtn) {
+                    shapeBtn.innerHTML = this.isRectangle ? "◯" : "▭";
+                }
+            }
+
+            this.showControls();
+
+        });
+
+        this.rect.on("mousedown", (e) => {
+            if (!this.rectBounds) return;
+
+            const lat = e.latlng.lat;
+            const lng = e.latlng.lng;
+
+            const dNorth = Math.abs(lat - this.rectBounds.north);
+            const dSouth = Math.abs(lat - this.rectBounds.south);
+            const dEast = Math.abs(lng - this.rectBounds.east);
+            const dWest = Math.abs(lng - this.rectBounds.west);
+
+            const min = Math.min(dNorth, dSouth, dEast, dWest);
+            const tol = 0.0001;
+
+            if (min < tol) {
+                window.isResizing = true;
+
+                const onMouseMove = (ev) => {
+                    const lat = ev.latlng.lat;
+                    const lng = ev.latlng.lng;
+
+                    const dNorth = Math.abs(lat - this.rectBounds.north);
+                    const dSouth = Math.abs(lat - this.rectBounds.south);
+                    const dEast = Math.abs(lng - this.rectBounds.east);
+                    const dWest = Math.abs(lng - this.rectBounds.west);
+
+                    const min = Math.min(dNorth, dSouth, dEast, dWest);
+
+                    const centerLat = this.latlng.lat;
+                    const centerLng = this.latlng.lng;
+
+                    if (min === dNorth || min === dSouth) {
+                        const newHalfHeight = Math.abs(lat - centerLat);
+
+                        this.rectBounds.north = centerLat + newHalfHeight;
+                        this.rectBounds.south = centerLat - newHalfHeight;
+
+                    } else if (min === dEast || min === dWest) {
+                        const newHalfWidth = Math.abs(lng - centerLng);
+
+                        this.rectBounds.east = centerLng + newHalfWidth;
+                        this.rectBounds.west = centerLng - newHalfWidth;
+                    }
+
+                    this.rect.setBounds([
+                        [this.rectBounds.south, this.rectBounds.west],
+                        [this.rectBounds.north, this.rectBounds.east]
+                    ]);
+                };
+
+                const stop = () => {
+                    window.isResizing = false;
+                    this.map.dragging.enable();
+                    this.map.off("mousemove", onMouseMove);
+                    this.map.off("mouseup", stop);
+                };
+
+                this.map.dragging.disable();
+                this.map.on("mousemove", onMouseMove);
+                this.map.on("mouseup", stop);
+
+            } else {
+                this.dot.fire("mousedown", e);
+            }
+
+            L.DomEvent.stopPropagation(e);
+        });
+
+    }
+
+
+    removeRectangle() {
+        if (this.rect) {
+            this.map.removeLayer(this.rect);
+            this.rect = null;
+        }
+    }
+
+    toggleShape() {
+        this.isRectangle = !this.isRectangle;
+
+        if (this.isRectangle) {
+            this.map.removeLayer(this.circle);
+            this.createRectangle();
+        } else {
+            this.removeRectangle();
+            this.circle.addTo(this.map);
+        }
     }
 }
