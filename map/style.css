@@ -35,7 +35,9 @@ html, body {
 .delete-button,
 .file-button,
 .loop-button,
-.shape-button {
+.shape-button,
+.playmode-button,
+.fade-button {
     background: white;
     border: 1px solid #bbbbbb;
     border-radius: 4px;
@@ -61,7 +63,9 @@ html, body {
 .delete-button:hover,
 .file-button:hover,
 .loop-button:hover,
-.shape-button:hover {
+.shape-button:hover,
+.playmode-button:hover,
+.fade-button:hover {
     background: #eee;
 }
 
@@ -69,7 +73,9 @@ html, body {
 .file-button:active,
 .delete-button:active,
 .loop-button:active,
-.shape-button:active {
+.shape-button:active,
+.playmode-button:active,
+.fade-button:active {
     background: #ccc;
     border-color: #000;
     transform: scale(0.9);
@@ -202,3 +208,80 @@ html, body {
 }
 
 
+
+.volume-slider {
+    -webkit-appearance: none;
+    appearance: none;
+
+    width: 100%;
+    height: 6px;
+
+    background: white;
+    border: 1px solid #bbbbbb;
+    border-radius: 4px;
+
+    outline: none;
+    cursor: pointer;
+
+    transition: background 0.12s, border-color 0.12s;
+}
+
+
+.volume-slider::-webkit-slider-runnable-track {
+    height: 6px;
+    background: transparent;
+}
+
+.volume-slider::-moz-range-track {
+    height: 6px;
+    background: transparent;
+}
+
+.volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+
+    width: 12px;
+    height: 16px;
+
+    background: white;
+    border: 1px solid #bbbbbb;
+    border-radius: 4px;
+
+    cursor: pointer;
+    margin-top: -6px;
+
+    transition: 
+        background 0.12s,
+        transform 0.08s,
+        border-color 0.12s;
+}
+
+.volume-slider::-moz-range-thumb {
+    width: 12px;
+    height: 16px;
+
+    background: white;
+    border: 1px solid #bbbbbb;
+    border-radius: 4px;
+
+    cursor: pointer;
+}
+
+.volume-slider:hover {
+    background: #eee;
+}
+
+.volume-slider:hover::-webkit-slider-thumb {
+    background: #eee;
+}
+
+.volume-slider:active::-webkit-slider-thumb {
+    background: #ccc;
+    border-color: #000;
+    transform: scale(0.9);
+}
+
+.volume-slider:active::-moz-range-thumb {
+    background: #ccc;
+    border-color: #000;
+}
