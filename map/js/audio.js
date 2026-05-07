@@ -4,14 +4,16 @@ function updateAudio(sourceNodes, userLatLng) {
     const now = SourceNode.audioCtx.currentTime;
 
     sourceNodes.forEach(node => {
-        if (!node.gainNode) return;
-        if (!node.audioBuffer) return;
+        if (!node.gainNode || !node.audioBuffer) return;
 
         let distance;
         let isInside;
 
-        // Rectangle logic
+        const wasInside = node.wasInside;
+
+        // Rectangle
         if (node.isRectangle && node.rectBounds) {
+
             const lat = userLatLng.lat;
             const lng = userLatLng.lng;
 
@@ -23,71 +25,98 @@ function updateAudio(sourceNodes, userLatLng) {
                 lng >= west &&
                 lng <= east;
 
-            if (isInside && node.wasInside === false) {
-                node.restartAudio();
-            }
-
             if (!isInside) {
-                distance = Infinity; // handled later
+                distance = 1;
             } else {
-
                 const centerLat = node.latlng.lat;
                 const centerLng = node.latlng.lng;
 
                 const dx = (lng - centerLng) * 111320 * Math.cos(centerLat * Math.PI / 180);
                 const dy = (lat - centerLat) * 111320;
 
-                const a =
-                    Math.min(
-                        Math.abs(centerLng - west),
-                        Math.abs(east - centerLng)
-                    ) * 111320 * Math.cos(centerLat * Math.PI / 180);
+                const a = Math.min(
+                    Math.abs(centerLng - west),
+                    Math.abs(east - centerLng)
+                ) * 111320 * Math.cos(centerLat * Math.PI / 180);
 
-                const b =
-                    Math.min(
-                        Math.abs(north - centerLat),
-                        Math.abs(centerLat - south)
-                    ) * 111320;
+                const b = Math.min(
+                    Math.abs(north - centerLat),
+                    Math.abs(centerLat - south)
+                ) * 111320;
 
-                const norm = Math.sqrt((dx * dx) / (a * a) + (dy * dy) / (b * b));
-
-                distance = norm;
+                distance = Math.sqrt((dx * dx) / (a * a) + (dy * dy) / (b * b));
             }
+
         }
 
-
-
-        // Circle logic
+        // Circle
         else {
 
             const rawDistance = userLatLng.distanceTo(node.latlng);
-
             isInside = rawDistance <= node.radius;
 
-            if (isInside && node.wasInside === false) {
+            distance = rawDistance / node.radius; // normalize
+        }
+
+        // Enter sourceNode logic
+        if (isInside && !wasInside) {
+
+            if (node.playMode === "restart") {
                 node.restartAudio();
             }
 
-            distance = rawDistance / node.radius;
+            else if (node.playMode === "pause") {
+                if (node.pauseOffset != null) {
+                    node.startAudioFrom(node.pauseOffset);
+                } else {
+                    node.startAudio();
+                }
+            }
 
-            if (isInside && node.wasInside === false) {
-                node.restartAudio();
+            else if (node.playMode === "single") {
+                if (!node.hasPlayedOnce) {
+                    node.restartAudio();
+                    node.hasPlayedOnce = true;
+                }
+            }
+        }
+
+        // Exit sourceNode logic
+        if (!isInside && wasInside) {
+
+            if (node.playMode === "pause") {
+                try {
+                    const ctx = SourceNode.audioCtx;
+                    node.pauseOffset = node.offset + (ctx.currentTime - node.startTime);
+                    node.source.stop();
+                } catch {}
+            }
+
+            else if (node.playMode === "single") {
+                try {
+                    node.source.stop();
+                } catch {}
             }
         }
 
         node.wasInside = isInside;
 
-        // Volume calculation
+        // Sound level
         let volume;
 
         if (!isInside) {
             volume = 0;
         } else if (node.audioMode === "fade") {
-            volume = Math.max(0, Math.min(1, 1 - distance)); // distance is already normalized
+            volume = Math.max(0, Math.min(1, 1 - distance));
         } else {
             volume = 1;
         }
-        
-        node.gainNode.gain.setTargetAtTime(volume, now, 0.05);
+
+        node.gainNode.gain.setTargetAtTime(
+            volume * node.maxGain,
+            now,
+            0.05
+        );
+
     });
 }

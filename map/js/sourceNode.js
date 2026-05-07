@@ -11,9 +11,15 @@ class SourceNode {
         this.rectBounds = null;
 
         this.hasAudio = false;
+        this.maxGain = 1;
 
         this.isPreviewPlaying = false;
         this.loopEnabled = false
+
+        this.playMode = "restart";
+        this.hasPlayedOnce = false; 
+        this.pauseTime = 0;
+
 
         if (!SourceNode.allNodes) {
             SourceNode.allNodes = [];
@@ -69,6 +75,9 @@ class SourceNode {
         this.gainNode.gain.value = 0; // start silent
 
         this.source.connect(this.gainNode).connect(ctx.destination);
+        
+        this.startTime = ctx.currentTime;
+        this.offset = 0;
 
         this.source.start();
     }
@@ -93,7 +102,30 @@ class SourceNode {
 
         this.source.connect(this.gainNode).connect(ctx.destination);
 
+        this.startTime = ctx.currentTime;
+        this.offset = 0;
+
         this.source.start(0);
+    }
+
+    startAudioFrom(offset) {
+        if (!this.audioBuffer) return;
+
+        const ctx = SourceNode.audioCtx;
+
+        this.source = ctx.createBufferSource();
+        this.source.buffer = this.audioBuffer;
+        this.source.loop = this.loopEnabled;
+
+        this.gainNode = ctx.createGain();
+        this.gainNode.gain.value = 0;
+
+        this.source.connect(this.gainNode).connect(ctx.destination);
+
+        this.startTime = ctx.currentTime;
+        this.offset = offset;
+
+        this.source.start(0, offset);
     }
 
 
@@ -112,18 +144,6 @@ class SourceNode {
 
         this.circleStyleDashed = false;
 
-        this.circle.on("dblclick", (e) => {
-            L.DomEvent.stopPropagation(e);
-
-            this.circleStyleDashed = !this.circleStyleDashed;
-
-            this.circle.setStyle({
-                dashArray: this.circleStyleDashed ? "4,4" : null
-            });
-
-            this.audioMode = this.circleStyleDashed ? "fade" : "binary";
-        });
-
         this.controls = L.marker(this.latlng, {
             icon: L.divIcon({
                 className: "node-controls",
@@ -136,6 +156,11 @@ class SourceNode {
                     </div>
                     <div class="controls-row">
                         <div class="shape-button" title="Toggle circle / rectangle">▭</div>
+                        <div class="playmode-button" title="Playback mode (Restart, Pause, Single play)">R</div>
+                        <div class="fade-button" title="Toggle fade (≈) / on-off (!)">!</div>
+                    </div>
+                    <div class="controls-row">
+                        <input class="volume-slider" type="range" min="0" max="1" step="0.01" value="1" />
                     </div>
                 `,
                 iconSize: [120, 40],
@@ -148,6 +173,9 @@ class SourceNode {
         this.controls.on("add", () => {
             this.bindControls();
             this.updateShapeButton();
+            this.updatePlayModeButton();
+            this.updateFadeButton();
+            this.updateFadeVisual();
         });
 
        
@@ -450,7 +478,7 @@ class SourceNode {
         this.previewSource.loop = this.loopEnabled;
 
         this.previewGain = ctx.createGain();
-        this.previewGain.gain.value = 1;
+        this.previewGain.gain.value = this.maxGain;
 
         this.previewSource.connect(this.previewGain).connect(ctx.destination);
         this.previewSource.start();
@@ -614,13 +642,67 @@ class SourceNode {
                         e.stopPropagation();
                         this.toggleShape();
 
-                        // ✅ ALWAYS read fresh DOM + state
                         this.updateShapeButton();
                     };
                 }
             };
         }
 
+        const modeBtn = el.querySelector(".playmode-button");
+
+        if (modeBtn) {
+            modeBtn.onclick = (e) => {
+                e.stopPropagation();
+
+                if (this.playMode === "restart") {
+                    this.playMode = "pause";
+                } else if (this.playMode === "pause") {
+                    this.playMode = "single";
+                } else {
+                    this.playMode = "restart";
+                }
+
+                this.updatePlayModeButton();
+            };
+        }
+
+        const fadeBtn = el.querySelector(".fade-button");
+
+        if (fadeBtn) {
+            fadeBtn.onclick = (e) => {
+                e.stopPropagation();
+
+                this.audioMode = this.audioMode === "fade" ? "binary" : "fade";
+
+                this.updateFadeButton();
+                this.updateFadeVisual();
+            };
+        }
+
+        const slider = el.querySelector(".volume-slider");
+
+        if (slider) {
+            slider.value = this.maxGain;
+
+            L.DomEvent.disableClickPropagation(slider);
+            L.DomEvent.disableScrollPropagation(slider);
+
+            slider.oninput = (e) => {
+                e.stopPropagation();
+
+                this.maxGain = parseFloat(slider.value);
+
+                if (this.isPreviewPlaying && this.previewGain) {
+                    this.previewGain.gain.setTargetAtTime(
+                        this.maxGain,
+                        SourceNode.audioCtx.currentTime,
+                        0.05
+                    );
+                }
+            };
+        }
+
+        
         this.updateLoopIcon();
         this.updatePreviewIcon();
     }
@@ -657,21 +739,6 @@ class SourceNode {
 
             SourceNode.allNodes.forEach(n => n.hideControls());
             this.showControls();
-        });
-
-        this.rect.on("dblclick", (e) => {
-            L.DomEvent.stopPropagation(e);
-
-            this.circleStyleDashed = !this.circleStyleDashed;
-
-            this.rect.setStyle({
-                dashArray: this.circleStyleDashed ? "4,4" : null
-            });
-
-            this.audioMode = this.circleStyleDashed ? "fade" : "binary";
-
-            this.showControls();
-
         });
 
         this.rect.on("mousedown", (e) => {
@@ -780,6 +847,50 @@ class SourceNode {
         if (!shapeBtn) return;
 
         shapeBtn.innerHTML = this.isRectangle ? "◯" : "▭";
+    }
+
+    updatePlayModeButton() {
+        const el = this.controls?.getElement();
+        if (!el) return;
+
+        const btn = el.querySelector(".playmode-button");
+        if (!btn) return;
+
+        if (this.playMode === "restart") btn.innerHTML = "R";
+        else if (this.playMode === "pause") btn.innerHTML = "P";
+        else if (this.playMode === "single") btn.innerHTML = "1";
+    }
+
+    updateFadeVisual() {
+        const dashed = this.audioMode === "fade";
+
+        if (this.circle) {
+            this.circle.setStyle({
+                dashArray: dashed ? "4,4" : null
+            });
+        }
+
+        if (this.rect) {
+            this.rect.setStyle({
+                dashArray: dashed ? "4,4" : null
+            });
+        }
+    }
+
+    updateFadeButton() {
+        const el = this.controls?.getElement();
+        if (!el) return;
+
+        const btn = el.querySelector(".fade-button");
+        if (!btn) return;
+
+        if (this.audioMode === "fade") {
+            btn.innerHTML = "≈";
+            btn.classList.add("active");
+        } else {
+            btn.innerHTML = "!";
+            btn.classList.remove("active");
+        }
     }
 
 }
