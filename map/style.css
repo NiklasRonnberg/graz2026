@@ -12,20 +12,30 @@ html, body {
     height: 100vh;
 }
 
-
-
-
 .node-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.controls-row {
+    display: flex;
+    gap: 4px;
+    pointer-events: auto;
+}
+
+/*.node-controls {
     width: 120px;
     display: flex;
     justify-content: center;
     pointer-events: none;
-}
+}*/
 
 .preview-button,
 .delete-button,
 .file-button,
-.loop-button {
+.loop-button,
+.shape-button {
     background: white;
     border: 1px solid #bbbbbb;
     border-radius: 4px;
@@ -50,14 +60,16 @@ html, body {
 .preview-button:hover,
 .delete-button:hover,
 .file-button:hover,
-.loop-button:hover {
+.loop-button:hover,
+.shape-button:hover {
     background: #eee;
 }
 
 .preview-button:active,
 .file-button:active,
 .delete-button:active,
-.loop-button:active {
+.loop-button:active,
+.shape-button:active {
     background: #ccc;
     border-color: #000;
     transform: scale(0.9);
