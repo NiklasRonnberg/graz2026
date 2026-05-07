@@ -147,6 +147,7 @@ class SourceNode {
 
         this.controls.on("add", () => {
             this.bindControls();
+            this.updateShapeButton();
         });
 
        
@@ -606,7 +607,17 @@ class SourceNode {
             shape.onclick = (e) => {
                 e.stopPropagation();
                 this.toggleShape();
-                shape.innerHTML = this.isRectangle ? "◯" : "▭";
+                const shape = el.querySelector(".shape-button");
+
+                if (shape) {
+                    shape.onclick = (e) => {
+                        e.stopPropagation();
+                        this.toggleShape();
+
+                        // ✅ ALWAYS read fresh DOM + state
+                        this.updateShapeButton();
+                    };
+                }
             };
         }
 
@@ -658,14 +669,6 @@ class SourceNode {
             });
 
             this.audioMode = this.circleStyleDashed ? "fade" : "binary";
-
-            const el = this.controls?.getElement();
-            if (el) {
-                const shapeBtn = el.querySelector(".shape-button");
-                if (shapeBtn) {
-                    shapeBtn.innerHTML = this.isRectangle ? "◯" : "▭";
-                }
-            }
 
             this.showControls();
 
@@ -742,22 +745,41 @@ class SourceNode {
     }
 
 
+    
     removeRectangle() {
         if (this.rect) {
             this.map.removeLayer(this.rect);
-            this.rect = null;
         }
     }
+
 
     toggleShape() {
         this.isRectangle = !this.isRectangle;
 
         if (this.isRectangle) {
             this.map.removeLayer(this.circle);
-            this.createRectangle();
+
+            if (!this.rect) {
+                this.createRectangle();
+            } else {
+                this.rect.addTo(this.map);
+            }
+
         } else {
             this.removeRectangle();
             this.circle.addTo(this.map);
         }
+        this.updateShapeButton();
     }
+
+    updateShapeButton() {
+        const el = this.controls?.getElement();
+        if (!el) return;
+
+        const shapeBtn = el.querySelector(".shape-button");
+        if (!shapeBtn) return;
+
+        shapeBtn.innerHTML = this.isRectangle ? "◯" : "▭";
+    }
+
 }
