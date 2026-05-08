@@ -10,6 +10,9 @@ class SourceNode {
         this.isRectangle = false;
         this.rectBounds = null;
 
+        this.rotation = 0;
+        this.rotationHandle = null;
+
         this.hasAudio = false;
         this.maxGain = 1;
 
@@ -319,10 +322,11 @@ class SourceNode {
                 this.rectBounds.east += dLng;
                 this.rectBounds.west += dLng;
 
-                this.rect.setBounds([
-                    [this.rectBounds.south, this.rectBounds.west],
-                    [this.rectBounds.north, this.rectBounds.east]
-                ]);
+                this.rect.setLatLngs(this.getRectangleCorners());
+                if (this.rotationHandle) {
+                    this.showRotationHandle();
+                }
+
             }
 
             this.updatePreviewPosition();
@@ -389,10 +393,7 @@ class SourceNode {
                 else if (min === dEast) this.rectBounds.east = lng;
                 else if (min === dWest) this.rectBounds.west = lng;
 
-                this.rect.setBounds([
-                    [this.rectBounds.south, this.rectBounds.west],
-                    [this.rectBounds.north, this.rectBounds.east]
-                ]);
+                this.rect.setLatLngs(this.getRectangleCorners());
 
                 return;
             }
@@ -526,6 +527,7 @@ class SourceNode {
     hideControls() {
         if (this.map.hasLayer(this.controls)) {
             this.map.removeLayer(this.controls);
+            this.removeRotationHandle();
         }
     }
 
@@ -719,24 +721,19 @@ class SourceNode {
             west: lng - lngOffset
         };
 
-        this.rect = L.rectangle(
-            [
-                [this.rectBounds.south, this.rectBounds.west],
-                [this.rectBounds.north, this.rectBounds.east]
-            ],
-            {
-                color: "rgba(255, 0, 0, 0.4)",
-                fillColor: "rgba(255, 0, 0, 0.2)",
-                fillOpacity: 1,
-                dashArray: this.circleStyleDashed ? "4,4" : null
-            }
-        ).addTo(this.map);
+        this.rect = L.polygon(this.getRectangleCorners(), {
+            color: "rgba(255, 0, 0, 0.4)",
+            fillColor: "rgba(255, 0, 0, 0.2)",
+            fillOpacity: 1,
+            dashArray: this.circleStyleDashed ? "4,4" : null
+        }).addTo(this.map);
 
         this.rect.on("click", (e) => {
             L.DomEvent.stopPropagation(e);
 
             SourceNode.allNodes.forEach(n => n.hideControls());
             this.showControls();
+            this.showRotationHandle();
         });
 
         this.rect.on("mousedown", (e) => {
@@ -757,36 +754,36 @@ class SourceNode {
                 window.isResizing = true;
 
                 const onMouseMove = (ev) => {
-                    const lat = ev.latlng.lat;
-                    const lng = ev.latlng.lng;
+                    // convert mouse into rectangle's local (unrotated) space
+                    const local = this.toLocal(ev.latlng);
 
-                    const dNorth = Math.abs(lat - this.rectBounds.north);
-                    const dSouth = Math.abs(lat - this.rectBounds.south);
-                    const dEast = Math.abs(lng - this.rectBounds.east);
-                    const dWest = Math.abs(lng - this.rectBounds.west);
+                    // current half size
+                    let halfWidth  = (this.rectBounds.east - this.rectBounds.west) / 2;
+                    let halfHeight = (this.rectBounds.north - this.rectBounds.south) / 2;
 
-                    const min = Math.min(dNorth, dSouth, dEast, dWest);
+                    // choose dominant axis (same idea as before, but in rotated space)
+                    if (Math.abs(local.y) > Math.abs(local.x)) {
+                        halfHeight = Math.abs(local.y);
+                    } else {
+                        halfWidth = Math.abs(local.x);
+                    }
 
+                    // write back axis-aligned bounds (centered)
                     const centerLat = this.latlng.lat;
                     const centerLng = this.latlng.lng;
 
-                    if (min === dNorth || min === dSouth) {
-                        const newHalfHeight = Math.abs(lat - centerLat);
+                    this.rectBounds.north = centerLat + halfHeight;
+                    this.rectBounds.south = centerLat - halfHeight;
+                    this.rectBounds.east  = centerLng + halfWidth;
+                    this.rectBounds.west  = centerLng - halfWidth;
 
-                        this.rectBounds.north = centerLat + newHalfHeight;
-                        this.rectBounds.south = centerLat - newHalfHeight;
+                    // redraw with rotation
+                    this.rect.setLatLngs(this.getRectangleCorners());
 
-                    } else if (min === dEast || min === dWest) {
-                        const newHalfWidth = Math.abs(lng - centerLng);
-
-                        this.rectBounds.east = centerLng + newHalfWidth;
-                        this.rectBounds.west = centerLng - newHalfWidth;
+                    // keep handle synced
+                    if (this.rotationHandle) {
+                        this.showRotationHandle();
                     }
-
-                    this.rect.setBounds([
-                        [this.rectBounds.south, this.rectBounds.west],
-                        [this.rectBounds.north, this.rectBounds.east]
-                    ]);
                 };
 
                 const stop = () => {
@@ -830,9 +827,12 @@ class SourceNode {
                 this.rect.addTo(this.map);
             }
 
+            this.showRotationHandle();
+
         } else {
             this.removeRectangle();
             this.circle.addTo(this.map);
+            this.removeRotationHandle();
         }
         this.updateShapeButton();
     }
@@ -888,6 +888,152 @@ class SourceNode {
         } else {
             btn.innerHTML = "!";
             btn.classList.remove("active");
+        }
+    }
+
+    getRectangleCorners() {
+        const { north, south, east, west } = this.rectBounds;
+
+        const center = this.latlng;
+
+        const corners = [
+            [north, west],
+            [north, east],
+            [south, east],
+            [south, west]
+        ];
+
+        if (this.rotation === 0) return corners;
+
+        const angle = this.rotation;
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+
+        return corners.map(([lat, lng]) => {
+            const dx = lng - center.lng;
+            const dy = lat - center.lat;
+
+            const rx = dx * cos - dy * sin;
+            const ry = dx * sin + dy * cos;
+
+            return [center.lat + ry, center.lng + rx];
+        });
+    }
+
+    toLocal(latlng) {
+        const center = this.latlng;
+
+        const dx = latlng.lng - center.lng;
+        const dy = latlng.lat - center.lat;
+
+        const cos = Math.cos(-this.rotation);
+        const sin = Math.sin(-this.rotation);
+
+        return {
+            x: dx * cos - dy * sin,
+            y: dx * sin + dy * cos
+        };
+    }
+
+    fromLocal(x, y) {
+        const center = this.latlng;
+
+        const cos = Math.cos(this.rotation);
+        const sin = Math.sin(this.rotation);
+
+        return L.latLng(
+            center.lat + (x * sin + y * cos),
+            center.lng + (x * cos - y * sin)
+        );
+    }
+
+    showRotationHandle() {
+        if (!this.isRectangle || !this.rectBounds) return;
+
+        const center = this.latlng;
+
+        const corners = this.getRectangleCorners();
+
+        const [lat, lng] = corners[1];  
+
+        const handlePos = L.latLng(lat, lng);
+
+        if (this.rotationHandle) {
+            this.rotationHandle.setLatLng(handlePos);
+            return;
+        }
+
+        this.rotationHandle = L.circleMarker(handlePos, {
+            radius: 8,
+            color: "rgba(75,75,75,0.9)",
+            weight: 1,
+            fillColor: "rgba(255,255,255,0.9)",
+            fillOpacity: 1
+        }).addTo(this.map);
+
+        this.enableRotation();
+    }
+
+    enableRotation() {
+        const map = this.map;
+
+        let rotating = false;
+
+        let startAngle = 0;
+        let startRotation = 0;
+
+        this.rotationHandle.on("mousedown", (e) => {
+            rotating = true;
+            map.dragging.disable();
+
+            L.DomEvent.stop(e);
+
+            const center = this.latlng;
+
+            const dx = e.latlng.lng - center.lng;
+            const dy = e.latlng.lat - center.lat;
+
+            startAngle = Math.atan2(dy, dx);
+            startRotation = this.rotation;
+
+            map.on("mousemove", onMove);
+            map.on("mouseup", stop);
+        });
+
+        const onMove = (e) => {
+            if (!rotating) return;
+
+            const center = this.latlng;
+
+            const dx = e.latlng.lng - center.lng;
+            const dy = e.latlng.lat - center.lat;
+
+            if (Math.abs(dx) < 1e-10 && Math.abs(dy) < 1e-10) return;
+
+            const currentAngle = Math.atan2(dy, dx);
+
+            this.rotation = startRotation + (currentAngle - startAngle);
+
+            this.rect.setLatLngs(this.getRectangleCorners());
+
+            if (this.rotationHandle) {
+                this.showRotationHandle();
+            }
+        };
+
+        const stop = () => {
+            rotating = false;
+            map.dragging.enable();
+
+            map.off("mousemove", onMove);
+            map.off("mouseup", stop);
+        };
+    }
+
+    removeRotationHandle() {
+        if (this.rotationHandle) {
+            this.map.removeLayer(this.rotationHandle);
+            this.rotationHandle = null;
         }
     }
 

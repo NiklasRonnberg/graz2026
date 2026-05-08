@@ -160,6 +160,13 @@ function initializeMap() {
                                 node.createRectangle();
                             }
 
+                            node.rotation = d.rotation || 0;
+
+                            if (node.rect) {
+                                node.rect.setLatLngs(node.getRectangleCorners());
+                                node.showRotationHandle();
+                            }
+
                             if (d.rectBounds && node.rect) {
                                 node.rectBounds = d.rectBounds;
 
@@ -237,6 +244,7 @@ function initializeMap() {
                             radius: node.radius,
                             isRectangle: node.isRectangle,
                             rectBounds: node.rectBounds,
+                            rotation: node.rotation,
                             audioMode: node.audioMode,
                             loopEnabled: node.loopEnabled,
                             playMode: node.playMode,

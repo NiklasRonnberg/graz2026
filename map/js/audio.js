@@ -19,32 +19,40 @@ function updateAudio(sourceNodes, userLatLng) {
 
             const { north, south, east, west } = node.rectBounds;
 
+            const local = node.toLocal(userLatLng);
+
+            const halfWidth  = (node.rectBounds.east - node.rectBounds.west) / 2;
+            const halfHeight = (node.rectBounds.north - node.rectBounds.south) / 2;
+
             isInside =
-                lat >= south &&
-                lat <= north &&
-                lng >= west &&
-                lng <= east;
+                Math.abs(local.x) <= halfWidth &&
+                Math.abs(local.y) <= halfHeight;
 
             if (!isInside) {
                 distance = 1;
             } else {
-                const centerLat = node.latlng.lat;
-                const centerLng = node.latlng.lng;
+                // convert to local rotated space
+                const local = node.toLocal(userLatLng);
 
-                const dx = (lng - centerLng) * 111320 * Math.cos(centerLat * Math.PI / 180);
-                const dy = (lat - centerLat) * 111320;
+                // convert degrees → meters
+                const scale = 111320;
+                const dx = local.x * scale * Math.cos(node.latlng.lat * Math.PI / 180);
+                const dy = local.y * scale;
 
-                const a = Math.min(
-                    Math.abs(centerLng - west),
-                    Math.abs(east - centerLng)
-                ) * 111320 * Math.cos(centerLat * Math.PI / 180);
+                // half-size in meters
+                const halfWidth =
+                    (node.rectBounds.east - node.rectBounds.west) / 2 *
+                    scale * Math.cos(node.latlng.lat * Math.PI / 180);
 
-                const b = Math.min(
-                    Math.abs(north - centerLat),
-                    Math.abs(centerLat - south)
-                ) * 111320;
+                const halfHeight =
+                    (node.rectBounds.north - node.rectBounds.south) / 2 *
+                    scale;
 
-                distance = Math.sqrt((dx * dx) / (a * a) + (dy * dy) / (b * b));
+                // normalized elliptical distance
+                distance = Math.sqrt(
+                    (dx * dx) / (halfWidth * halfWidth) +
+                    (dy * dy) / (halfHeight * halfHeight)
+                );
             }
 
         }
