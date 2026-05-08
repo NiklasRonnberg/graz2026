@@ -151,6 +151,31 @@ function initializeMap() {
                             node.radius = d.radius;
                             node.circle.setRadius(d.radius);
 
+                            if (d.isRectangle) {
+                                node.isRectangle = true;
+
+                                node.rectBounds = d.rectBounds;
+
+                                node.map.removeLayer(node.circle);
+                                node.createRectangle();
+                            }
+
+                            if (d.rectBounds && node.rect) {
+                                node.rectBounds = d.rectBounds;
+
+                                node.rect.setBounds([
+                                    [d.rectBounds.south, d.rectBounds.west],
+                                    [d.rectBounds.north, d.rectBounds.east]
+                                ]);
+                            }
+
+                            node.playMode = d.playMode || "restart";
+                            node.updatePlayModeButton();
+
+                            node.maxGain = d.maxGain ?? 1;
+                            const slider = node.controls?.getElement()?.querySelector(".volume-slider");
+                            if (slider) slider.value = node.maxGain;
+
                             node.audioMode = d.audioMode || "binary";
                             node.loopEnabled = d.loopEnabled || false;
                             if (node.source) {
@@ -161,8 +186,9 @@ function initializeMap() {
                             node.audioFileName = d.audioFileName || null; // restore name
                             node.updateLabel(); 
 
-                            // restore visual style
-                            node.circleStyleDashed = (node.audioMode === "fade");
+                            // restore visual style                            
+                            node.updateFadeVisual();
+                            node.updateFadeButton();
                             node.circle.setStyle({
                                 dashArray: node.circleStyleDashed ? "4,4" : null
                             });
@@ -209,8 +235,12 @@ function initializeMap() {
                             lat: node.latlng.lat,
                             lng: node.latlng.lng,
                             radius: node.radius,
+                            isRectangle: node.isRectangle,
+                            rectBounds: node.rectBounds,
                             audioMode: node.audioMode,
                             loopEnabled: node.loopEnabled,
+                            playMode: node.playMode,
+                            maxGain: node.maxGain,
                             audioFileName: node.audioFileName || null
                         }))
                     };

@@ -328,8 +328,6 @@ class SourceNode {
             this.updatePreviewPosition();
         };
 
-
-
         const stopMove = (e) => {
             moving = false;
 
