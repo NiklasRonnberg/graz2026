@@ -1,3 +1,17 @@
+const layerMarkerColors = [
+    "rgba(173, 75, 59, ",
+    "rgba(170, 149, 60, ",
+    "rgba(76, 134, 204, ",
+    "rgba(63, 165, 63, "
+];
+
+const layerColors = [
+    "rgba(225, 100, 75, ",
+    "rgba(224, 196, 76, ",
+    "rgba(92, 158, 255, ",
+    "rgba(2, 219, 82, "
+];
+
 class SourceNode {
     constructor(map, latlng) {
         this.audioMode = "binary"; // default
@@ -22,6 +36,10 @@ class SourceNode {
         this.playMode = "restart";
         this.hasPlayedOnce = false; 
         this.pauseTime = 0;
+
+        this.isPlaying = false;
+
+        this.isLocked = false;
 
 
         if (!SourceNode.allNodes) {
@@ -56,15 +74,27 @@ class SourceNode {
                 SourceNode.audioCtx = new AudioContext();
             }
 
-            this.audioBuffer = await SourceNode.audioCtx.decodeAudioData(arrayBuffer);
+            if (this.source) {
+                try {
+                    this.pauseTime = this.getCurrentTime();
+                    this.stopAudioWithPause();
+                } catch {}
+            }
+
+            this.stopPreview();
+
+            this.audioBuffer =
+                await SourceNode.audioCtx.decodeAudioData(arrayBuffer);
 
             this.startAudio();
             this.hasAudio = true;
+
         };
     }
 
     startAudio() {
         const ctx = SourceNode.audioCtx;
+        if (this.isPlaying && this.playMode !== "pause") return;
 
         if (ctx.state === "suspended") {
             ctx.resume();
@@ -72,18 +102,33 @@ class SourceNode {
 
         this.source = ctx.createBufferSource();
         this.source.buffer = this.audioBuffer;
+
         this.source.loop = this.loopEnabled;
 
         this.gainNode = ctx.createGain();
-        this.gainNode.gain.value = 0; // start silent
+        this.gainNode.gain.value = 0;
 
         this.source.connect(this.gainNode).connect(ctx.destination);
-        
-        this.startTime = ctx.currentTime;
-        this.offset = 0;
 
-        this.source.start();
+        const duration = this.audioBuffer.duration;
+
+        let offset = 0;
+
+        if (this.playMode === "pause") {
+            offset = (this.pauseTime || 0) % duration;
+        }
+
+        if (this.playMode === "pause") {
+            this.startTime = ctx.currentTime - (this.pauseTime || 0);
+        } else {
+            this.pauseTime = 0;
+            this.startTime = ctx.currentTime;
+        }
+
+        this.source.start(0, offset);
+        this.isPlaying = true;
     }
+
 
     restartAudio() {
         if (!this.audioBuffer) return;
@@ -92,7 +137,7 @@ class SourceNode {
 
         if (this.source) {
             try {
-                this.source.stop();
+                this.stopAudioWithPause();
             } catch {}
         }
 
@@ -135,13 +180,13 @@ class SourceNode {
     createVisuals() {
         this.dot = L.circleMarker(this.latlng, {
             radius: 6,
-            color: "rgba(155, 0, 0, 1)"
+            color: layerMarkerColors[currentWriteLayer] + "1)"
         }).addTo(this.map);
 
         this.circle = L.circle(this.latlng, {
             radius: this.radius,
-            color: "rgba(255, 0, 0, 0.4)",
-            fillColor: "rgba(255, 0, 0, 0.2)",
+            color: layerColors[currentWriteLayer] + "0.4)",
+            fillColor: layerColors[currentWriteLayer] + "0.2)",
             fillOpacity: 1
         }).addTo(this.map);
 
@@ -152,15 +197,16 @@ class SourceNode {
                 className: "node-controls",
                 html: `
                     <div class="controls-row">
-                        <div class="file-button missing-audio" title="Click to load an audio file">📁</div>
-                        <div class="delete-button" title="Remove this sound node">🗑</div>
-                        <div class="loop-button" title="Enable or disable looping playback">➡</div>
-                        <div class="preview-button" title="Play or stop preview sound">▶</div>
+                        <div class="file-button missing-audio" title="Click to load an audio file"><img src="./assets/load.png" class="inline-icon"></div>
+                        <div class="delete-button" title="Remove this sound node"><img src="./assets/delete.png" class="inline-icon"></div>
+                        <div class="loop-button" title="Enable or disable looping playback"><img src="./assets/linear.png" class="inline-icon"></div>
+                        <div class="preview-button" title="Play or stop preview sound"><img src="./assets/play.png" class="inline-icon"></div>
                     </div>
                     <div class="controls-row">
-                        <div class="shape-button" title="Toggle circle / rectangle">▭</div>
-                        <div class="playmode-button" title="Playback mode (Restart, Pause, Single play)">R</div>
-                        <div class="fade-button" title="Toggle fade (≈) / on-off (!)">!</div>
+                        <div class="shape-button" title="Toggle circle / rectangle"><img src="./assets/rectangle.png" class="inline-icon"></div>
+                        <div class="playmode-button" title="Playback mode (Restart, Pause, Single play)"><img src="./assets/restart.png" class="inline-icon"></div>
+                        <div class="fade-button" title="Toggle fade (≈) / on-off (!)"><img src="./assets/binary.png" class="inline-icon"></div>
+                        <div class="lock-button" title="Lock / unlock node"><img src="./assets/unlocked.png" class="inline-icon"></div>
                     </div>
                     <div class="controls-row">
                         <input class="volume-slider" type="range" min="0" max="1" step="0.01" value="1" />
@@ -179,6 +225,8 @@ class SourceNode {
             this.updatePlayModeButton();
             this.updateFadeButton();
             this.updateFadeVisual();
+            this.updateLockButton();
+            this.updateLockState();
         });
 
        
@@ -196,18 +244,24 @@ class SourceNode {
 
         // click handler 
         this.dot.on("click", (e) => {
+            if (this._layerIndex !== currentWriteLayer) return;
+
             L.DomEvent.stopPropagation(e);
 
             SourceNode.allNodes.forEach(n => n.hideControls());
             this.showControls();
         });
 
+
         this.circle.on("click", (e) => {
+            if (this._layerIndex !== currentWriteLayer) return;
+
             L.DomEvent.stopPropagation(e);
 
             SourceNode.allNodes.forEach(n => n.hideControls());
             this.showControls();
-        }); 
+        });
+
         
         setTimeout(() => {
             this.updateLabel();
@@ -232,7 +286,7 @@ class SourceNode {
         const loopBtn = el.querySelector(".loop-button");
         if (!loopBtn) return;
 
-        loopBtn.innerHTML = this.loopEnabled ? "🔁" : "➡";
+        loopBtn.innerHTML = this.loopEnabled ? '<img src="./assets/loop.png" class="inline-icon">' : '<img src="./assets/linear.png" class="inline-icon">';
 
         if (this.loopEnabled) {
             loopBtn.classList.add("active");
@@ -343,6 +397,9 @@ class SourceNode {
         };
 
         const startMove = (e) => {
+            if (this._layerIndex !== currentWriteLayer) return;
+            if (this.isLocked) return; 
+
             // prevent move if resizing
             if (window.isResizing) return;
 
@@ -357,9 +414,10 @@ class SourceNode {
         };
 
         // Attach to both dot and circle center
-        this.dot.on("mousedown", startMove);
+        this.dot.on("mousedown", startMove);     
 
         this.circle.on("mousedown", (e) => {
+            if (this._layerIndex !== currentWriteLayer) return
             const center = this.circle.getLatLng();
             const dist = center.distanceTo(e.latlng);
             const tol = 10;
@@ -369,13 +427,15 @@ class SourceNode {
 
             startMove(e);
         });
+
     }
 
-    // RESIZE (already had, now inside class)
     enableResize() {
         const map = this.map;
 
         const onMouseMove = (e) => {
+            if (this.isLocked) return; 
+
             if (this.isRectangle && this.rectBounds && this.rect) {
 
                 const lat = e.latlng.lat;
@@ -503,7 +563,7 @@ class SourceNode {
         const previewBtn = el.querySelector(".preview-button");
         if (!previewBtn) return;
 
-        previewBtn.innerHTML = this.isPreviewPlaying ? "⏹" : "▶";
+        previewBtn.innerHTML = this.isPreviewPlaying ? '<img src="./assets/stop.png" class="inline-icon">' : '<img src="./assets/play.png" class="inline-icon">';
     }
 
     updateLabel() {
@@ -533,22 +593,60 @@ class SourceNode {
 
 
 
-    // REMOVE node completely
+    // remove node completely
     remove() {
-        [this.dot, this.circle, this.rect, this.controls, this.label].forEach(layer => {
-            if (layer) this.map.removeLayer(layer);
+        if (this.source) {
+            try { this.stopAudioWithPause(); } catch {}
+        }
+
+        if (this.previewSource) {
+            try { this.previewSource.stop(); } catch {}
+        }
+
+        this.previewSource = null;
+        this.previewGain = null;
+        this.isPreviewPlaying = false;
+
+        [
+            this.dot,
+            this.circle,
+            this.rect,
+            this.controls,
+            this.label,
+            this.rotationHandle
+        ].forEach(layer => {
+            if (layer && this.map.hasLayer(layer)) {
+                try { this.map.removeLayer(layer); } catch {}
+            }
         });
 
-        if (this.source) {
-            this.source.stop();
+        if (SourceNode.allNodes) {
+            const i = SourceNode.allNodes.indexOf(this);
+            if (i !== -1) SourceNode.allNodes.splice(i, 1);
         }
 
-        if (this.onRemove) {
-            this.onRemove(this);
+        if (typeof sourceNodes !== "undefined") {
+            const i = sourceNodes.indexOf(this);
+            if (i !== -1) sourceNodes.splice(i, 1);
         }
+
+        if (this._layerIndex !== undefined &&
+            typeof layers !== "undefined" &&
+            layers[this._layerIndex] &&
+            layers[this._layerIndex].nodes) {
+
+            const arr = layers[this._layerIndex].nodes;
+            const i = arr.indexOf(this);
+            if (i !== -1) arr.splice(i, 1);
+        }
+
+        this.source = null;
+        this.gainNode = null;
     }
 
+
     bindControls() {
+        if (!this.controls) return;
         const el = this.controls.getElement();
         if (!el) return;
 
@@ -592,8 +690,18 @@ class SourceNode {
                         SourceNode.audioCtx = new AudioContext();
                     }
 
-                    this.audioBuffer =
-                        await SourceNode.audioCtx.decodeAudioData(arrayBuffer);
+
+                    if (this.isPreviewPlaying) {
+                        this.stopPreview();
+                        const previewBtn = el.querySelector(".preview-button");
+                        previewBtn.innerHTML = '<img src="./assets/play.png" class="inline-icon">';
+                    }
+
+                    if (this.source) {
+                        try { this.stopAudioWithPause(); } catch {}
+                    }
+
+                    this.audioBuffer = await SourceNode.audioCtx.decodeAudioData(arrayBuffer);
 
                     this.startAudio();
                     this.hasAudio = true;
@@ -611,8 +719,8 @@ class SourceNode {
                 this.loopEnabled = !this.loopEnabled;
 
                 if (this.previewSource) {
-                    this.stopPreview();      // ❗ stop looping immediately
-                    this.startPreview();     // restart with new loop state
+                    this.stopPreview(); 
+                    this.startPreview();
                 }
 
                 if (this.source) {
@@ -679,6 +787,21 @@ class SourceNode {
             };
         }
 
+        const lockBtn = el.querySelector(".lock-button");
+
+        if (lockBtn) {
+            lockBtn.onclick = (e) => {
+                e.stopPropagation();
+
+                this.isLocked = !this.isLocked;
+
+                const btn = e.currentTarget;
+
+                this.updateLockButton();
+                this.updateLockState();
+            };
+        }
+
         const slider = el.querySelector(".volume-slider");
 
         if (slider) {
@@ -722,8 +845,8 @@ class SourceNode {
         };
 
         this.rect = L.polygon(this.getRectangleCorners(), {
-            color: "rgba(255, 0, 0, 0.4)",
-            fillColor: "rgba(255, 0, 0, 0.2)",
+            color: layerColors[currentWriteLayer] + "0.4)",
+            fillColor: layerColors[currentWriteLayer] + "0.2)",
             fillOpacity: 1,
             dashArray: this.circleStyleDashed ? "4,4" : null
         }).addTo(this.map);
@@ -737,6 +860,8 @@ class SourceNode {
         });
 
         this.rect.on("mousedown", (e) => {
+            if (this.isLocked) return; 
+
             if (!this.rectBounds) return;
 
             const lat = e.latlng.lat;
@@ -844,7 +969,7 @@ class SourceNode {
         const shapeBtn = el.querySelector(".shape-button");
         if (!shapeBtn) return;
 
-        shapeBtn.innerHTML = this.isRectangle ? "◯" : "▭";
+        shapeBtn.innerHTML = this.isRectangle ? '<img src="./assets/circle.png" class="inline-icon">' : '<img src="./assets/rectangle.png" class="inline-icon">';
     }
 
     updatePlayModeButton() {
@@ -854,9 +979,9 @@ class SourceNode {
         const btn = el.querySelector(".playmode-button");
         if (!btn) return;
 
-        if (this.playMode === "restart") btn.innerHTML = "R";
-        else if (this.playMode === "pause") btn.innerHTML = "P";
-        else if (this.playMode === "single") btn.innerHTML = "1";
+        if (this.playMode === "restart") btn.innerHTML = '<img src="./assets/restart.png" class="inline-icon">';
+        else if (this.playMode === "pause") btn.innerHTML = '<img src="./assets/pause.png" class="inline-icon">';
+        else if (this.playMode === "single") btn.innerHTML = '<img src="./assets/single.png" class="inline-icon">';
     }
 
     updateFadeVisual() {
@@ -883,10 +1008,10 @@ class SourceNode {
         if (!btn) return;
 
         if (this.audioMode === "fade") {
-            btn.innerHTML = "≈";
+            btn.innerHTML = '<img src="./assets/fade.png" class="inline-icon">';
             btn.classList.add("active");
         } else {
-            btn.innerHTML = "!";
+            btn.innerHTML = '<img src="./assets/binary.png" class="inline-icon">';
             btn.classList.remove("active");
         }
     }
@@ -910,13 +1035,17 @@ class SourceNode {
         const sin = Math.sin(angle);
 
         return corners.map(([lat, lng]) => {
-            const dx = lng - center.lng;
-            const dy = lat - center.lat;
+            const cosLat = Math.cos(center.lat * Math.PI / 180);
+
+            const dx = (lng - center.lng) * cosLat;
+            const dy = (lat - center.lat);
+
 
             const rx = dx * cos - dy * sin;
             const ry = dx * sin + dy * cos;
 
-            return [center.lat + ry, center.lng + rx];
+            return [center.lat + ry, center.lng + (rx / cosLat)];
+
         });
     }
 
@@ -966,7 +1095,7 @@ class SourceNode {
         this.rotationHandle = L.circleMarker(handlePos, {
             radius: 8,
             color: "rgba(75,75,75,0.9)",
-            weight: 1,
+            weight: 2,
             fillColor: "rgba(255,255,255,0.9)",
             fillOpacity: 1
         }).addTo(this.map);
@@ -983,6 +1112,8 @@ class SourceNode {
         let startRotation = 0;
 
         this.rotationHandle.on("mousedown", (e) => {
+            if (this.isLocked) return; 
+            
             rotating = true;
             map.dragging.disable();
 
@@ -1028,6 +1159,41 @@ class SourceNode {
             map.off("mousemove", onMove);
             map.off("mouseup", stop);
         };
+
+    }
+
+    updateLockButton() {
+        const el = this.controls?.getElement();
+        if (!el) return;
+
+        const btn = el.querySelector(".lock-button");
+        if (!btn) return;
+
+        btn.innerHTML = this.isLocked ? '<img src="./assets/locked.png" class="inline-icon">' : '<img src="./assets/unlocked.png" class="inline-icon">';
+
+        btn.classList.toggle("active", this.isLocked);
+    }
+
+    updateLockState() {
+        const el = this.controls?.getElement();
+        if (!el) return;
+
+        const disable = this.isLocked;
+
+        const buttons = el.querySelectorAll(
+            ".file-button, .delete-button, .loop-button, .preview-button, .shape-button, .playmode-button, .fade-button"
+        );
+
+        buttons.forEach(b => {
+            b.style.pointerEvents = disable ? "none" : "auto";
+            b.style.opacity = disable ? "0.5" : "1";
+        });
+
+        const slider = el.querySelector(".volume-slider");
+        if (slider) {
+            slider.disabled = disable;
+            slider.style.opacity = disable ? "0.5" : "1";
+        }
     }
 
     removeRotationHandle() {
@@ -1037,4 +1203,24 @@ class SourceNode {
         }
     }
 
+    getCurrentTime() {
+        const ctx = SourceNode.audioCtx;
+        return ctx.currentTime - this.startTime;
+    }
+
+    stopAudioWithPause() {
+        if (!this.source) return;
+
+        const ctx = SourceNode.audioCtx;
+
+        try {
+            this.pauseTime = ctx.currentTime - this.startTime;
+            this.source.stop();
+        } catch {}
+
+        this.source = null;
+        this.isPlaying = false;
+    }
+    
 }
+

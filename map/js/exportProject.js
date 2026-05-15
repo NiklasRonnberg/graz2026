@@ -1,43 +1,73 @@
-function exportProject(data, sourceNodes) {
+function exportProject(data, sourceNodes, filenameBase) {
+
     console.log("Exporting project:", data);
 
-    
     const title =
-            data.projectTitle && data.projectTitle.trim()
-                ? data.projectTitle
-                : "My sound walk";
+        data.projectTitle && data.projectTitle.trim()
+            ? data.projectTitle
+            : "My sound walk";
 
-    exportProjectAsHTML(title);
-    exportProjectCSS(sourceNodes, title);
-    exportScriptsJS(sourceNodes, title);
+    const base =
+        (filenameBase || title).replace(/\s+/g, "_");
+
+    exportProjectAsHTML(title, base);
+    exportProjectCSS(sourceNodes, title, base);
+    exportScriptsJS(sourceNodes, allPaths, allViewpoints, title, base);
 }
 
 
 
-
 // ---- HTML ----
-function exportProjectAsHTML(projectTitle) {
+function exportProjectAsHTML(projectTitle, base) {
+
+    const safeTitle = projectTitle || "My sound walk";
+    const safeBase  = base || "export";
+
     const htmlContent = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>${projectTitle || "My sound walk"}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${safeTitle}</title>
+
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <link rel="stylesheet" href="${projectTitle}.css">
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script src="${projectTitle}.js"></script>
+
+    <!-- Project files -->
+    <link rel="stylesheet" href="${safeBase}.css">
+    <script src="${safeBase}.js" defer></script>
+
+    <style>
+        /* fallback if CSS file fails */
+        #map {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+        }
+    </style>
 </head>
+
 <body>
+
 <div id="map"></div>
+
 </body>
 </html>`;
 
+    // create file
     const blob = new Blob([htmlContent], { type: "text/html" });
     const url = URL.createObjectURL(blob);
 
-    const filename =
-        (projectTitle || "My sound walk").replace(/\s+/g, "_") + ".html";
+    const filename = safeBase + ".html";
 
+    // download
     const a = document.createElement("a");
     a.href = url;
     a.download = filename;
@@ -50,66 +80,140 @@ function exportProjectAsHTML(projectTitle) {
 
 
 // ---- CSS ----
-function exportProjectCSS(sourceNodes, projectTitle) {
-    let strokeColor = "rgba(255, 0, 0, 0.4)";
-    let fillColor = "rgba(255, 0, 0, 0.2)";
+function exportProjectCSS(sourceNodes, projectTitle, base) {
 
+    const safeTitle = projectTitle || "My sound walk";
+    const safeBase  = (base || safeTitle).replace(/\s+/g, "_");
+
+    // Default colors
+    let strokeColor = "rgba(255, 0, 0, 0.4)";
+    let fillColor   = "rgba(255, 0, 0, 0.2)";
+
+    // Extract style from first node (if available)
     if (sourceNodes.length > 0) {
-        const style = sourceNodes[0].circle.options;
+        const style = sourceNodes[0].circle?.options || {};
 
         strokeColor = style.color || strokeColor;
-        fillColor = style.fillColor || fillColor;
+        fillColor   = style.fillColor || fillColor;
     }
 
     const css = `
-        html, body {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-        }
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+}
 
-        #map {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-        }
+#map {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+}
 
-        .leaflet-interactive {
-            stroke: ${strokeColor};
-            fill: ${fillColor};
-            fill-opacity: 1;
-        }
+path.leaflet-interactive {
+    fill: none !important;
+}
 
-        .start-button {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 50vw;
-            height: 25vh;
-            padding: 12px;
-            z-index: 1000;
-            font-size: 10vh;
-            background: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.25);
-        }
+circle.leaflet-interactive,
+rect.leaflet-interactive {
+    stroke: ${strokeColor};
+    fill: ${fillColor};
+    fill-opacity: 1;
+}
 
-        .start-button:hover {
-            background: #eee;
-        }
-        `;
+.viewpoint-marker {
+    font-size: 24px;
+}
 
+.leaflet-popup-content-wrapper {
+    background: transparent;
+    box-shadow: none;
+    border: none;
+}
+
+.leaflet-popup-tip {
+    display: none;
+}
+
+.hover-box {
+    background: white;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 14px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    white-space: nowrap;
+    max-width: 200px;
+}
+
+.start-button {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    
+    width: 50vw;
+    height: 25vh;
+
+    font-size: 8vh;
+    font-weight: bold;
+
+    background: white;
+    color: black;
+
+    border: none;
+    border-radius: 12px;
+
+    cursor: pointer;
+
+    z-index: 1000;
+
+    box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+
+    transition: all 0.2s ease;
+}
+
+.start-button:hover {
+    background: #f0f0f0;
+    transform: translate(-50%, -50%) scale(1.02);
+}
+
+.start-button:active {
+    transform: translate(-50%, -50%) scale(0.98);
+}
+
+@media (max-width: 768px) {
+    .start-button {
+        width: 70vw;
+        height: 20vh;
+        font-size: 5vh;
+    }
+
+    .hover-box {
+        white-space: normal;
+        max-width: 70vw;
+    }
+}
+
+.leaflet-interactive[stroke="green"] {
+    stroke: green;
+}
+
+body {
+    touch-action: none;
+}
+`;
+
+    // create file
     const blob = new Blob([css], { type: "text/css" });
     const url = URL.createObjectURL(blob);
 
-    const filename =
-        (projectTitle || "My sound walk").replace(/\s+/g, "_") + ".css";
+    const filename = safeBase + ".css";
 
+    // download
     const a = document.createElement("a");
     a.href = url;
     a.download = filename;
@@ -122,7 +226,8 @@ function exportProjectCSS(sourceNodes, projectTitle) {
 
 
 // ---- JS ----
-function exportScriptsJS(sourceNodes, projectTitle) {
+function exportScriptsJS(sourceNodes, allPaths, allViewpoints, projectTitle, base) {
+    const safeBase = (base || "export").replace(/\s+/g, "_");
 
     const nodeData = sourceNodes.map(n => ({
         lat: n.latlng.lat,
@@ -130,15 +235,32 @@ function exportScriptsJS(sourceNodes, projectTitle) {
         radius: n.radius,
         audioMode: n.audioMode,
         loopEnabled: n.loopEnabled,
+        playMode: n.playMode,
         audioFileName: n.audioFileName || null
     }));
+
+    const pathData = allPaths.map(p => ({
+        latlngs: p.getLatLngs().map(pt => ({
+            lat: pt.lat,
+            lng: pt.lng
+        }))
+    }));
+
+    const viewpointData = allViewpoints.map(v => ({
+        lat: v.getLatLng().lat,
+        lng: v.getLatLng().lng,
+        note: v._note || ""
+    }));
+
 
     const scriptContent = `
 document.addEventListener("DOMContentLoaded", () => {
 
-    const nodesData = ${JSON.stringify(nodeData, null, 2)};
+    const nodesData = ${JSON.stringify(nodeData)};
+    const pathsData = ${JSON.stringify(pathData)};
+    const viewpointsData = ${JSON.stringify(viewpointData)};
 
-    let map = L.map("map").setView([0, 0], 18);
+    const map = L.map("map").setView([0, 0], 18);
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 22,
@@ -146,8 +268,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }).addTo(map);
 
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const nodes = [];
 
+    const nodes = [];
     let currentPosition = null;
 
     const userMarker = L.circleMarker([0, 0], {
@@ -155,45 +277,104 @@ document.addEventListener("DOMContentLoaded", () => {
         color: "green"
     }).addTo(map);
 
-    function startAudio(node) {
-        if (!node.audioBuffer) return;
+    // ===== PATHS =====
+    pathsData.forEach(path => {
+        const latlngs = path.latlngs.map(p => [p.lat, p.lng]);
+
+        L.polyline(latlngs, {
+            color: "blue",
+            weight: 6,
+            opacity: 0.5,
+            fill: false
+        }).addTo(map);
+    });
+
+    // ===== VIEWPOINTS =====
+    viewpointsData.forEach(v => {
+
+        const marker = L.marker([v.lat, v.lng]).addTo(map);
+
+        if (!v.note || v.note.trim() === "") return;
+
+        let hoverPopup = null;
+
+        marker.on("mouseover", () => {
+
+            const container = document.createElement("div");
+
+            container.innerHTML = \`
+                <div style="
+                    background: white;
+                    padding: 6px 10px;
+                    border-radius: 6px;
+                    font-size: 14px;
+                    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+                ">
+                    \${v.note}
+                </div>
+            \`;
+
+            hoverPopup = L.popup({
+                closeButton: false,
+                autoClose: false,
+                closeOnClick: false,
+                offset: [0, -25]
+            })
+            .setLatLng(marker.getLatLng())
+            .setContent(container)
+            .openOn(map);
+        });
+
+        marker.on("mouseout", () => {
+            if (hoverPopup) {
+                map.closePopup(hoverPopup);
+                hoverPopup = null;
+            }
+        });
+
+    });
+
+    function createSource(node, offset = 0) {
 
         const source = audioCtx.createBufferSource();
         source.buffer = node.audioBuffer;
         source.loop = node.data.loopEnabled;
 
-        const gainNode = audioCtx.createGain();
-        gainNode.gain.value = 0;
+        const gain = audioCtx.createGain();
+        gain.gain.value = 0;
 
-        source.connect(gainNode).connect(audioCtx.destination);
-        source.start();
+        source.connect(gain).connect(audioCtx.destination);
+        source.start(0, offset);
 
         node.source = source;
-        node.gainNode = gainNode;
+        node.gain = gain;
+        node.startTime = audioCtx.currentTime - offset;
     }
 
-    function restartAudio(node) {
-        if (!node.audioBuffer) return;
+    function stopSource(node) {
+        if (!node.source) return;
 
-        if (node.source) {
-            try { node.source.stop(); } catch {}
-        }
+        try {
+            node.pauseTime = audioCtx.currentTime - node.startTime;
+            node.source.stop();
+        } catch {}
 
-        const source = audioCtx.createBufferSource();
-        source.buffer = node.audioBuffer;
-        source.loop = node.data.loopEnabled;
+        node.source = null;
+    }
 
-        const gainNode = audioCtx.createGain();
-        gainNode.gain.value = 0;
+    function restart(node) {
+        stopSource(node);
+        createSource(node, 0);
+    }
 
-        source.connect(gainNode).connect(audioCtx.destination);
-        source.start(0);
-
-        node.source = source;
-        node.gainNode = gainNode;
+    function resume(node) {
+        stopSource(node);
+        const offset = (node.pauseTime || 0) % node.audioBuffer.duration;
+        createSource(node, offset);
     }
 
     function createNode(n) {
+
         const latlng = L.latLng(n.lat, n.lng);
 
         L.circle(latlng, {
@@ -214,7 +395,9 @@ document.addEventListener("DOMContentLoaded", () => {
             data: n,
             audioBuffer: null,
             source: null,
-            gainNode: null,
+            gain: null,
+            startTime: 0,
+            pauseTime: 0,
             wasInside: false
         };
 
@@ -222,119 +405,104 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (n.audioFileName) {
             fetch("sounds/" + n.audioFileName)
-                .then(res => res.arrayBuffer())
+                .then(r => r.arrayBuffer())
                 .then(buf => audioCtx.decodeAudioData(buf))
                 .then(decoded => {
                     node.audioBuffer = decoded;
-
                     if (audioCtx.state === "running") {
-                        startAudio(node);
+                        createSource(node);
                     }
-                })
-                .catch(err => {
-                    console.error("Audio load failed:", n.audioFileName, err);
                 });
         }
     }
 
     nodesData.forEach(createNode);
 
-    if (nodesData.length > 0) {
-        const bounds = L.latLngBounds(nodesData.map(n => [n.lat, n.lng]));
-        map.fitBounds(bounds);
+    const allCoords = [
+        ...nodesData.map(n => [n.lat, n.lng]),
+        ...viewpointsData.map(v => [v.lat, v.lng])
+    ];
+
+    if (allCoords.length > 0) {
+        map.fitBounds(allCoords);
     }
 
     function updateAudio(userPos) {
-
-        if (!audioCtx) return;
 
         const now = audioCtx.currentTime;
 
         nodes.forEach(node => {
 
-            if (!node.gainNode) return;
             if (!node.audioBuffer) return;
 
-            const distance = userPos.distanceTo(node.latlng);
-            const isInside = distance <= node.data.radius;
+            const d = userPos.distanceTo(node.latlng);
+            const inside = d <= node.data.radius;
 
-            // restart when entering
-            if (isInside && node.wasInside === false) {
-                restartAudio(node);
+            if (inside && !node.wasInside) {
+                if (node.data.playMode === "pause") {
+                    resume(node);
+                } else {
+                    restart(node);
+                }
             }
 
-            node.wasInside = isInside;
-
-            let volume;
-
-            if (node.data.audioMode === "fade") {
-                volume = Math.max(0, Math.min(1, 1 - (distance / node.data.radius)));
-            } else {
-                volume = (distance <= node.data.radius) ? 1 : 0;
+            if (!inside && node.wasInside) {
+                if (node.data.playMode === "pause" || node.data.playMode === "single") {
+                    stopSource(node);
+                }
             }
 
-            node.gainNode.gain.setTargetAtTime(volume, now, 0.05);
+            node.wasInside = inside;
+
+            if (!node.gain) return;
+
+            let vol = node.data.audioMode === "fade"
+                ? Math.max(0, 1 - (d / node.data.radius))
+                : (inside ? 1 : 0);
+
+            node.gain.gain.setTargetAtTime(vol, now, 0.05);
         });
     }
 
-    // GPS tracking
-    if (navigator.geolocation) {
-        navigator.geolocation.watchPosition(
-            (pos) => {
-                const latlng = L.latLng(
-                    pos.coords.latitude,
-                    pos.coords.longitude
-                );
+    navigator.geolocation?.watchPosition(pos => {
 
-                currentPosition = latlng;
+        const p = L.latLng(pos.coords.latitude, pos.coords.longitude);
 
-                userMarker.setLatLng(latlng);
-                updateAudio(latlng);
-            },
-            () => console.warn("GPS not available"),
-            { enableHighAccuracy: true }
-        );
-    }
+        currentPosition = p;
+        userMarker.setLatLng(p);
 
-    // START BUTTON
+        updateAudio(p);
+
+    });
+
     const btn = document.createElement("button");
-    btn.innerText = "Start";
-
     btn.className = "start-button";
+    btn.innerText = "Start";
 
     btn.onclick = () => {
 
         audioCtx.resume();
 
         nodes.forEach(node => {
-            startAudio(node);
-
-            if (currentPosition) {
-                const dist = currentPosition.distanceTo(node.latlng);
-                node.wasInside = dist <= node.data.radius;
-            }
+            if (node.audioBuffer) createSource(node);
         });
 
-        if (currentPosition) {
-            updateAudio(currentPosition);
-        }
+        if (currentPosition) updateAudio(currentPosition);
 
         btn.remove();
     };
 
     document.body.appendChild(btn);
+
 });
 `;
 
     const blob = new Blob([scriptContent], { type: "application/javascript" });
     const url = URL.createObjectURL(blob);
 
-    const filename =
-        (projectTitle || "My sound walk").replace(/\\s+/g, "_") + ".js";
-
     const a = document.createElement("a");
     a.href = url;
-    a.download = filename;
+    a.download = safeBase + ".js";
     a.click();
 
     URL.revokeObjectURL(url);
